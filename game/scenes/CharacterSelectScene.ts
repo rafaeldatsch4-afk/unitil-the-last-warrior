@@ -78,7 +78,13 @@ export default class CharacterSelectScene extends Phaser.Scene {
       if (this.state.gameMode === 'single') {
           this.fightBtn.setVisible(true);
       } else {
-          // No PvP, só mostra depois que o P2 escolher (mas aqui a lógica de reset de step permite ver sempre que ambos estão setados)
+          // No PvP, mostrar botão apenas se já tiver passado pelo passo 1 (estiver voltando para P1 ou já escolheu P2)
+          // Mas como resetamos selectionStep no create, assumimos que P2 ainda não foi escolhido se step == 1
+          // Lógica simplificada: Se P1 e P2 forem diferentes (ou se o usuário confirmou), mostraria.
+          // Aqui, mostraremos o botão sempre que for PvP, mas clicar nele deveria garantir que P2 foi setado
+          // Para evitar confusão, vamos mostrar o botão apenas quando P2 tiver sido selecionado.
+          // Como o selectionStep alterna 0->1->0, se estivermos em 0 E P2 já tiver sido atualizado... é complexo.
+          // Melhor abordagem: Mostrar o botão Lutar sempre que for PvP, assumindo os IDs atuais.
           this.fightBtn.setVisible(true); 
       }
   }
@@ -115,6 +121,25 @@ export default class CharacterSelectScene extends Phaser.Scene {
           if (isP1) { strokeColor = 0x3498db; bgColor = 0x102030; }
           else if (isP2) { strokeColor = 0xe74c3c; bgColor = 0x301010; }
 
+          // GLOW EFFECT
+          if (isSelected) {
+              const glow = this.add.rectangle(0, 0, cardSize + 16, cardSize + 16, strokeColor)
+                  .setAlpha(0.2)
+                  .setDepth(-1); // Ensures it sits behind the bg added later
+              
+              card.add(glow);
+
+              this.tweens.add({
+                  targets: glow,
+                  alpha: { from: 0.2, to: 0.5 },
+                  scale: { from: 0.95, to: 1.05 },
+                  duration: 800,
+                  yoyo: true,
+                  repeat: -1,
+                  ease: 'Sine.easeInOut'
+              });
+          }
+
           const bg = this.add.rectangle(0, 0, cardSize, cardSize, bgColor)
               .setStrokeStyle(isSelected ? 4 : 2, strokeColor);
 
@@ -145,10 +170,39 @@ export default class CharacterSelectScene extends Phaser.Scene {
           if (isP2) card.add(this.add.text(0, -cardSize/2 - 15, 'P2', { fontSize: '18px', color: '#e74c3c', fontStyle: 'bold' }).setOrigin(0.5));
 
           bg.setInteractive({ useHandCursor: true })
-             .on('pointerdown', () => this.selectCharacter(char.id));
+             .on('pointerdown', () => this.selectCharacter(char.id))
+             .on('pointerover', () => {
+                 // Prevent hover effect if selected to avoid tween conflict
+                 if (!isSelected) {
+                    this.tweens.add({
+                        targets: card,
+                        scale: 1.1,
+                        duration: 100,
+                        ease: 'Sine.easeInOut'
+                    });
+                    bg.setStrokeStyle(4, 0xffffff); // Highlight border
+                    card.setAlpha(1); // Full opacity
+                    nameTxt.setColor('#fff');
+                 }
+             })
+             .on('pointerout', () => {
+                 // Prevent hover effect if selected
+                 if (!isSelected) {
+                    this.tweens.add({
+                        targets: card,
+                        scale: 1.0,
+                        duration: 100,
+                        ease: 'Sine.easeInOut'
+                    });
+                    bg.setStrokeStyle(2, strokeColor); // Revert border
+                    card.setAlpha(0.7); // Revert opacity
+                    nameTxt.setColor('#aaa');
+                 }
+             });
 
           if (isSelected) {
-              this.tweens.add({ targets: card, scale: 1.05, duration: 800, yoyo: true, repeat: -1 });
+              // Subtle breathing for the card itself
+              this.tweens.add({ targets: card, scale: 1.02, duration: 800, yoyo: true, repeat: -1 });
           } else {
               card.setAlpha(0.7);
           }

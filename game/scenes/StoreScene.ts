@@ -12,6 +12,7 @@ export default class StoreScene extends Phaser.Scene {
   declare time: Phaser.Time.Clock;
   declare tweens: Phaser.Tweens.TweenManager;
   declare events: Phaser.Events.EventEmitter;
+  declare cache: Phaser.Cache.CacheManager;
 
   private coinsText!: Phaser.GameObjects.Text;
   private itemContainers: Phaser.GameObjects.Container[] = [];
@@ -23,6 +24,10 @@ export default class StoreScene extends Phaser.Scene {
   private visibleArea = { y: 100, height: 420 }; // Top header is ~100px
   private scrollBarThumb!: Phaser.GameObjects.Rectangle;
   private scrollBarTrack!: Phaser.GameObjects.Rectangle;
+
+  // Selection Logic
+  private selectedIndex: number = 0;
+  private selectionRect!: Phaser.GameObjects.Rectangle;
 
   // Input keys
   private keys!: any;
@@ -55,7 +60,7 @@ export default class StoreScene extends Phaser.Scene {
     this.coinsText = this.add.text(920, 40, `COINS: ${state.coins}`, { fontSize: '24px', color: '#ffd54a', fontStyle: 'bold' }).setOrigin(1, 0.5);
     
     // Info Text about controls
-    this.add.text(480, 85, 'Scroll: W (Up) / A (Down)', { fontSize: '14px', color: '#888888' }).setOrigin(0.5);
+    this.add.text(480, 85, 'Nav: WASD / Arrows | Buy: SPACE / ENTER', { fontSize: '14px', color: '#888888' }).setOrigin(0.5);
 
     // --- Scrollable Content Setup ---
     this.listContainer = this.add.container(0, this.visibleArea.y);
@@ -66,6 +71,12 @@ export default class StoreScene extends Phaser.Scene {
     maskShape.fillRect(0, this.visibleArea.y, 960, this.visibleArea.height);
     const mask = maskShape.createGeometryMask();
     this.listContainer.setMask(mask);
+
+    // Selection Highlight
+    this.selectionRect = this.add.rectangle(0, 0, 290, 150, 0xffd700, 0)
+        .setStrokeStyle(4, 0xffd700)
+        .setVisible(false);
+    this.listContainer.add(this.selectionRect); // Add to container so it scrolls
 
     // Scrollbar UI
     const trackX = 945;
@@ -107,30 +118,121 @@ export default class StoreScene extends Phaser.Scene {
         this.input.off('wheel', wheelHandler);
     });
 
-    // Keyboard Inputs (W for Up, A for Down)
+    // Keyboard Inputs (Standard WASD + Arrows for P2 support)
     if (this.input.keyboard) {
         this.keys = this.input.keyboard.addKeys({
             up: Phaser.Input.Keyboard.KeyCodes.W,
-            down: Phaser.Input.Keyboard.KeyCodes.A,
+            down: Phaser.Input.Keyboard.KeyCodes.S,
+            left: Phaser.Input.Keyboard.KeyCodes.A,
+            right: Phaser.Input.Keyboard.KeyCodes.D,
+            enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
+            space: Phaser.Input.Keyboard.KeyCodes.SPACE,
             upAlt: Phaser.Input.Keyboard.KeyCodes.UP,
-            downAlt: Phaser.Input.Keyboard.KeyCodes.DOWN
+            downAlt: Phaser.Input.Keyboard.KeyCodes.DOWN,
+            leftAlt: Phaser.Input.Keyboard.KeyCodes.LEFT,
+            rightAlt: Phaser.Input.Keyboard.KeyCodes.RIGHT
         });
     }
 
     this.renderItems(state);
+    this.updateSelectionHighlight();
   }
 
   update(time: number, delta: number) {
       if (!this.keys) return;
 
-      const scrollSpeed = 0.5 * delta; // Normalize speed with delta
+      if (Phaser.Input.Keyboard.JustDown(this.keys.up) || Phaser.Input.Keyboard.JustDown(this.keys.upAlt)) {
+          this.moveSelection(-3); // Move up a row (3 cols)
+      } else if (Phaser.Input.Keyboard.JustDown(this.keys.down) || Phaser.Input.Keyboard.JustDown(this.keys.downAlt)) {
+          this.moveSelection(3); // Move down a row
+      } else if (Phaser.Input.Keyboard.JustDown(this.keys.left) || Phaser.Input.Keyboard.JustDown(this.keys.leftAlt)) {
+          this.moveSelection(-1);
+      } else if (Phaser.Input.Keyboard.JustDown(this.keys.right) || Phaser.Input.Keyboard.JustDown(this.keys.rightAlt)) {
+          this.moveSelection(1);
+      } else if (Phaser.Input.Keyboard.JustDown(this.keys.enter) || Phaser.Input.Keyboard.JustDown(this.keys.space)) {
+          this.buySelected();
+      }
+  }
 
-      if (this.keys.up.isDown || this.keys.upAlt.isDown) {
-          // W or UP pressed: Scroll Up (Move content Down to see top)
-          this.updateScroll(-scrollSpeed);
-      } else if (this.keys.down.isDown || this.keys.downAlt.isDown) {
-          // A or DOWN pressed: Scroll Down (Move content Up to see bottom)
-          this.updateScroll(scrollSpeed);
+  moveSelection(delta: number) {
+      const state = this.registry.get('gameState') as GameState;
+      const count = state.characters.length;
+      
+      let newIndex = this.selectedIndex + delta;
+      
+      // Simple clamping
+      if (newIndex < 0) newIndex = 0;
+      if (newIndex >= count) newIndex = count - 1;
+      
+      if (newIndex !== this.selectedIndex) {
+          this.selectedIndex = newIndex;
+          if(this.cache.audio.exists('sfx_select')) this.sound.play('sfx_select');
+          this.updateSelectionHighlight();
+          this.scrollToSelection();
+      }
+  }
+
+  updateSelectionHighlight() {
+      if (!this.itemContainers[this.selectedIndex]) return;
+      
+      const target = this.itemContainers[this.selectedIndex];
+      this.selectionRect.setPosition(target.x, target.y);
+      this.selectionRect.setVisible(true);
+      
+      // Bring selection box to top of container logic if needed, but it's already in listContainer
+      this.listContainer.bringToTop(this.selectionRect);
+  }
+
+  scrollToSelection() {
+      const target = this.itemContainers[this.selectedIndex];
+      // Item Top Y relative to list start (0)
+      const itemTop = target.y - 70; // Half height (140/2)
+      const itemBottom = target.y + 70;
+
+      // Current visible window relative to list start: [scrollYPos, scrollYPos + visibleHeight]
+      const visibleTop = this.scrollYPos;
+      const visibleBottom = this.scrollYPos + this.visibleArea.height;
+
+      if (itemTop < visibleTop) {
+          // Scroll Up
+          this.scrollYPos = Math.max(0, itemTop - 10);
+      } else if (itemBottom > visibleBottom) {
+          // Scroll Down
+          this.scrollYPos = Math.min(this.contentHeight - this.visibleArea.height, itemBottom - this.visibleArea.height + 10);
+      }
+      
+      // Apply
+      this.listContainer.y = this.visibleArea.y - this.scrollYPos;
+      this.updateScrollBarPosition();
+  }
+
+  buySelected() {
+      const state = this.registry.get('gameState') as GameState;
+      const char = state.characters[this.selectedIndex];
+      this.attemptBuy(char);
+  }
+
+  attemptBuy(char: any) {
+      const state = this.registry.get('gameState') as GameState;
+      
+      if (char.unlocked) return; // Already owned
+
+      if (state.coins >= char.price) {
+          this.sound.play('sfx_select');
+          state.coins -= char.price;
+          char.unlocked = true;
+          
+          window.UTLW.save(); 
+          this.showSaveIndicator();
+
+          this.coinsText.setText(`COINS: ${state.coins}`);
+          this.renderItems(state);
+          this.updateSelectionHighlight(); // Re-render kills reference? No, containers recreated
+      } else {
+          this.sound.play('sfx_error');
+          // Visual feedback on selected item?
+          const container = this.itemContainers[this.selectedIndex];
+          this.tweens.add({ targets: container, x: container.x + 10, duration: 50, yoyo: true, repeat: 3 });
       }
   }
 
@@ -196,24 +298,12 @@ export default class StoreScene extends Phaser.Scene {
             const btnBg = this.add.rectangle(40, 30, 140, 40, 0xd35400);
             const btnTxt = this.add.text(40, 30, `${char.price} G`, { fontSize: '20px', fontStyle: 'bold' }).setOrigin(0.5);
             
+            // Mouse Interaction
             btnBg.setInteractive({ useHandCursor: true })
                 .on('pointerdown', () => {
-                    if (state.coins >= char.price) {
-                        this.sound.play('sfx_select');
-                        state.coins -= char.price;
-                        char.unlocked = true;
-                        
-                        // Save Game State and show feedback
-                        window.UTLW.save(); 
-                        this.showSaveIndicator();
-
-                        this.coinsText.setText(`COINS: ${state.coins}`);
-                        this.renderItems(state);
-                    } else {
-                        this.sound.play('sfx_error');
-                        btnTxt.setText("NO FUNDS");
-                        this.time.delayedCall(1000, () => btnTxt.setText(`${char.price} G`));
-                    }
+                    this.selectedIndex = index; // Sync selection
+                    this.updateSelectionHighlight();
+                    this.attemptBuy(char);
                 });
             container.add([btnBg, btnTxt]);
         }
@@ -221,6 +311,9 @@ export default class StoreScene extends Phaser.Scene {
         this.listContainer.add(container);
         this.itemContainers.push(container);
     });
+
+    // Re-add selection rect to top so it draws over new items
+    this.listContainer.bringToTop(this.selectionRect);
 
     // Calculate total height
     const rows = Math.ceil(state.characters.length / cols);

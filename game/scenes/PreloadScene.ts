@@ -60,13 +60,20 @@ export default class PreloadScene extends Phaser.Scene {
 
     chars.forEach(c => {
       // Base Form
-      if (this.textures.exists(c.key)) this.textures.remove(c.key);
+      if (this.textures.exists(c.key)) {
+          this.textures.remove(c.key);
+          // Also remove anims to prevent stale references
+          if(this.anims.exists(`${c.key}_idle`)) this.anims.remove(`${c.key}_idle`);
+      }
       this.generateLSWSprite(c.key, false);
       
       // Transformation
       if(c.transformAvailable) {
         const keySSJ = `${c.key}_ssj`;
-        if (this.textures.exists(keySSJ)) this.textures.remove(keySSJ);
+        if (this.textures.exists(keySSJ)) {
+            this.textures.remove(keySSJ);
+            if(this.anims.exists(`${keySSJ}_idle`)) this.anims.remove(`${keySSJ}_idle`);
+        }
         this.generateLSWSprite(c.key, true);
       }
     });

@@ -55,6 +55,7 @@ export default class BattleScene extends Phaser.Scene {
 
   private isBattleOver: boolean = false;
   private turnTimer?: Phaser.Time.TimerEvent;
+  private regenTimer?: Phaser.Time.TimerEvent;
   private keys!: any;
   private gameState!: GameState;
   
@@ -70,6 +71,8 @@ export default class BattleScene extends Phaser.Scene {
     this.isBattleOver = false;
     this.p1ActionActive = false;
     this.p2ActionActive = false;
+    this.p1SpecialHoldTime = 0;
+    this.p2SpecialHoldTime = 0;
 
     const chars = this.gameState.characters;
     this.playerData = chars.find(c => c.id === this.gameState.p1CharacterId) || chars[0];
@@ -100,16 +103,17 @@ export default class BattleScene extends Phaser.Scene {
     this.createInputs();
 
     this.time.delayedCall(1000, () => {
+        if (!this.scene.isActive()) return;
         this.log("FIGHT START!");
         if(this.gameState.gameMode === 'single') this.startAILoop();
     });
 
     // Passive Ki regeneration
-    this.time.addEvent({
+    this.regenTimer = this.time.addEvent({
         delay: 500,
         loop: true,
         callback: () => {
-            if(this.isBattleOver) return;
+            if(this.isBattleOver || !this.scene.isActive()) return;
             this.modifyKi(true, 1);
             this.modifyKi(false, 1);
         }
@@ -118,12 +122,14 @@ export default class BattleScene extends Phaser.Scene {
     // Clean up when scene shuts down
     this.events.on('shutdown', () => {
         if(this.turnTimer) this.turnTimer.remove();
+        if(this.regenTimer) this.regenTimer.remove();
         this.sound.stopByKey('bgm_battle');
+        this.input.keyboard?.removeAllKeys();
     });
   }
 
   update(time: number, delta: number) {
-    if(this.isBattleOver || !this.keys) return;
+    if(this.isBattleOver || !this.keys || !this.scene.isActive()) return;
 
     // --- PLAYER 1 CONTROLS ---
     if (!this.p1ActionActive) {
@@ -184,10 +190,11 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   performContinuousCharge(isPlayer: boolean, delta: number) {
+      if(this.isBattleOver) return;
       const chargeRate = 0.03 * delta; // Adjusted for delta
       this.modifyKi(isPlayer, chargeRate); 
       const aura = isPlayer ? this.p1Aura : this.p2Aura;
-      if(aura) {
+      if(aura && aura.active) {
           aura.setVisible(true);
           aura.setScale(1 + Math.sin(this.time.now * 0.02) * 0.2);
           aura.setAlpha(0.6);
@@ -196,12 +203,15 @@ export default class BattleScene extends Phaser.Scene {
 
   stopContinuousCharge(isPlayer: boolean) {
       const aura = isPlayer ? this.p1Aura : this.p2Aura;
-      if(aura) aura.setVisible(false);
+      if(aura && aura.active) aura.setVisible(false);
   }
 
   updateChargeIndicator(isPlayer: boolean, timer: number) {
       const sprite = isPlayer ? this.player : this.enemy;
       const indicator = isPlayer ? this.p1ChargeIndicator : this.p2ChargeIndicator;
+
+      // Safety check if sprite is destroyed
+      if (!sprite || !sprite.active) return;
 
       if (!indicator || !indicator.scene) {
           const obj = this.add.arc(sprite.x, sprite.y - 60, 15, 0, 360, false, 0x00ffff, 0.5);
@@ -277,6 +287,10 @@ export default class BattleScene extends Phaser.Scene {
 
   createInputs() {
       if(!this.input.keyboard) return;
+      
+      // Clean up old keys if any (defensive)
+      this.input.keyboard.removeAllKeys();
+
       this.keys = this.input.keyboard.addKeys({
           p1_attack: Phaser.Input.Keyboard.KeyCodes.W,
           p1_defend: Phaser.Input.Keyboard.KeyCodes.S,
@@ -306,6 +320,7 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   performAttack(isPlayer: boolean) {
+      if(this.isBattleOver) return;
       const attacker = isPlayer ? this.player : this.enemy;
       const target = isPlayer ? this.enemy : this.player;
       const startX = isPlayer ? this.p1StartPos.x : this.p2StartPos.x;
@@ -326,7 +341,9 @@ export default class BattleScene extends Phaser.Scene {
              this.modifyKi(isPlayer, 5);
              
              // Cooldown after attack
-             this.time.delayedCall(100, () => this.setActionState(isPlayer, false));
+             this.time.delayedCall(100, () => {
+                 if(this.scene.isActive()) this.setActionState(isPlayer, false);
+             });
           }
       });
   }
@@ -334,6 +351,7 @@ export default class BattleScene extends Phaser.Scene {
   performCharge(isPlayer: boolean) {
       if (isPlayer && this.p1ActionActive) return;
       if (!isPlayer && this.p2ActionActive) return;
+      if (this.isBattleOver) return;
 
       this.setActionState(isPlayer, true);
       this.modifyKi(isPlayer, 25); 
@@ -347,13 +365,16 @@ export default class BattleScene extends Phaser.Scene {
           alpha: 0, 
           duration: 600, 
           onComplete: () => {
-              aura.destroy();
-              this.setActionState(isPlayer, false);
+              if (this.scene.isActive()) {
+                  aura.destroy();
+                  this.setActionState(isPlayer, false);
+              }
           }
       });
   }
 
   performTransform(isPlayer: boolean) {
+      if (this.isBattleOver) return;
       const data = isPlayer ? this.playerData : this.enemyData;
       const ki = isPlayer ? this.playerKi : this.enemyKi;
       const isAlready = isPlayer ? this.playerTransformed : this.enemyTransformed;
@@ -392,7 +413,7 @@ export default class BattleScene extends Phaser.Scene {
                   scaleX: 2,
                   alpha: 0,
                   duration: 600,
-                  onComplete: () => pillar.destroy()
+                  onComplete: () => { if(this.scene.isActive()) pillar.destroy(); }
               });
 
               // Shockwave Ring
@@ -404,17 +425,18 @@ export default class BattleScene extends Phaser.Scene {
                   scale: 15,
                   alpha: { start: 1, end: 0 },
                   duration: 500,
-                  onComplete: () => ring.destroy()
+                  onComplete: () => { if(this.scene.isActive()) ring.destroy(); }
               });
           },
           onComplete: () => {
-              this.setActionState(isPlayer, false);
+              if(this.scene.isActive()) this.setActionState(isPlayer, false);
           }
       });
       this.log(`${data.name} TRANSFORMED!`);
   }
 
   performSpecial(isPlayer: boolean, isSuper: boolean) {
+      if(this.isBattleOver) return;
       const ki = isPlayer ? this.playerKi : this.enemyKi;
       const data = isPlayer ? this.playerData : this.enemyData;
       const cost = isSuper ? 80 : 40;
@@ -446,12 +468,21 @@ export default class BattleScene extends Phaser.Scene {
 
   private onSpecialComplete(isPlayer: boolean) {
       // Small delay before allowing input again
-      this.time.delayedCall(200, () => this.setActionState(isPlayer, false));
+      this.time.delayedCall(200, () => {
+          if(this.scene.isActive()) this.setActionState(isPlayer, false);
+      });
   }
 
   private specialBeam(isP: boolean, isS: boolean, col: number, hasInner: boolean, vibrate: boolean = false) {
       const attacker = isP ? this.player : this.enemy;
       const target = isP ? this.enemy : this.player;
+      
+      // Safety check
+      if(!attacker.active || !target.active) {
+          this.setActionState(isP, false);
+          return;
+      }
+
       const startX = isP ? attacker.x + 30 : attacker.x - 30;
       const endX = target.x;
       const y = attacker.y - 10;
@@ -469,7 +500,11 @@ export default class BattleScene extends Phaser.Scene {
           targets: main,
           width: Math.abs(endX - startX),
           duration: 300,
-          onUpdate: () => { if(inner) inner.width = main.width; if(vibrate) main.y = y + (Math.random() * 4 - 2); },
+          onUpdate: () => { 
+              if(!this.scene.isActive()) return;
+              if(inner && inner.active) inner.width = main.width; 
+              if(vibrate) main.y = y + (Math.random() * 4 - 2); 
+          },
           onComplete: () => {
               if (!this.scene.isActive()) return;
               this.takeDamage(!isP, isS ? 60 : 35);
@@ -479,8 +514,10 @@ export default class BattleScene extends Phaser.Scene {
                   alpha: 0, 
                   duration: 200, 
                   onComplete: () => { 
-                      main.destroy(); head.destroy(); inner?.destroy(); 
-                      this.onSpecialComplete(isP);
+                      if(this.scene.isActive()) {
+                          main.destroy(); head.destroy(); inner?.destroy(); 
+                          this.onSpecialComplete(isP);
+                      }
                   }
               });
           }
@@ -505,6 +542,7 @@ export default class BattleScene extends Phaser.Scene {
           width: Math.abs(endX - startX),
           duration: 500,
           onUpdate: (tw, targetObj) => {
+              if(!this.scene.isActive()) return;
               spiral.clear();
               spiral.lineStyle(2, 0xffcc00);
               const currentW = core.width;
@@ -525,8 +563,10 @@ export default class BattleScene extends Phaser.Scene {
                   alpha: 0, 
                   duration: 200, 
                   onComplete: () => { 
-                      core.destroy(); spiral.destroy(); 
-                      this.onSpecialComplete(isP);
+                      if(this.scene.isActive()) {
+                        core.destroy(); spiral.destroy(); 
+                        this.onSpecialComplete(isP);
+                      }
                   }
               });
           }
@@ -541,13 +581,16 @@ export default class BattleScene extends Phaser.Scene {
       this.log("DEATH BEAM!");
       if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam');
       this.time.delayedCall(50, () => {
+          if (!this.scene.isActive()) return;
           this.takeDamage(!isP, isS ? 50 : 25);
           this.cameras.main.flash(50, 255, 0, 255, true);
           this.tweens.add({ 
               targets: beam, alpha: 0, duration: 100, 
               onComplete: () => {
-                  beam.destroy();
-                  this.onSpecialComplete(isP);
+                  if(this.scene.isActive()) {
+                      beam.destroy();
+                      this.onSpecialComplete(isP);
+                  }
               }
            });
       });
@@ -565,6 +608,7 @@ export default class BattleScene extends Phaser.Scene {
           x: targetX,
           duration: 200,
           onComplete: () => {
+              if (!this.scene.isActive()) return;
               const slash = this.add.graphics().setDepth(5);
               slash.lineStyle(4, 0xffffff);
               const tY = this.p2StartPos.y;
@@ -574,9 +618,11 @@ export default class BattleScene extends Phaser.Scene {
               slash.strokePath();
               this.takeDamage(!isP, isS ? 55 : 30);
               this.time.delayedCall(200, () => {
-                  slash.destroy();
-                  attacker.x = startX;
-                  this.onSpecialComplete(isP);
+                  if(this.scene.isActive()) {
+                    slash.destroy();
+                    attacker.x = startX;
+                    this.onSpecialComplete(isP);
+                  }
               });
           }
       });
@@ -587,9 +633,9 @@ export default class BattleScene extends Phaser.Scene {
       const circle = this.add.circle(attacker.x + (isP?50:-50), attacker.y - 10, 30).setStrokeStyle(2, 0xffffff).setDepth(5);
       this.log("ZOLTRAAK!");
       this.tweens.add({ targets: circle, angle: 360, duration: 500, onComplete: () => {
+          if(!this.scene.isActive()) return;
           this.specialBeam(isP, isS, 0xdfe6e9, true);
           circle.destroy();
-          // onSpecialComplete is called inside specialBeam
       }});
   }
 
@@ -597,11 +643,15 @@ export default class BattleScene extends Phaser.Scene {
       this.log("MISSILE STRIKE!");
       const count = isS ? 6 : 3;
       for(let i=0; i<count; i++) {
-          this.time.delayedCall(i * 100, () => this.throwProjectile(isP, 'missile', 0xffffff, false));
+          this.time.delayedCall(i * 100, () => {
+              if(this.scene.isActive()) this.throwProjectile(isP, 'missile', 0xffffff, false);
+          });
       }
       this.time.delayedCall(count * 100, () => {
-          this.takeDamage(!isP, isS ? 30 : 15);
-          this.onSpecialComplete(isP);
+          if(this.scene.isActive()) {
+            this.takeDamage(!isP, isS ? 30 : 15);
+            this.onSpecialComplete(isP);
+          }
       });
   }
 
@@ -626,11 +676,14 @@ export default class BattleScene extends Phaser.Scene {
                   duration: 200,
                   ease: 'Cubic.easeIn',
                   onComplete: () => {
+                      if (!this.scene.isActive()) return;
                       this.cameras.main.shake(200, 0.05);
                       this.takeDamage(!isP, isS ? 80 : 50);
                       this.time.delayedCall(200, () => {
-                          attacker.x = startX;
-                          this.onSpecialComplete(isP);
+                          if(this.scene.isActive()) {
+                            attacker.x = startX;
+                            this.onSpecialComplete(isP);
+                          }
                       });
                   }
               });
@@ -641,28 +694,43 @@ export default class BattleScene extends Phaser.Scene {
   // --- HELPER UTILS ---
 
   throwProjectile(isP: boolean, key: string, tint: number, isS: boolean) {
+      if(!this.scene.isActive()) return;
       const attacker = isP ? this.player : this.enemy;
       const target = isP ? this.enemy : this.player;
+      
       const proj = this.add.sprite(attacker.x, attacker.y - 10, key).setTint(tint).setScale(isS ? 4 : 2).setDepth(5);
       if(!isP) proj.setFlipX(true);
+      
       this.tweens.add({
           targets: proj,
           x: target.x,
           duration: 400,
-          onComplete: () => { proj.destroy(); if(!isS) this.takeDamage(!isP, 20); }
+          onComplete: () => { 
+              if(this.scene.isActive()) {
+                proj.destroy(); 
+                if(!isS) this.takeDamage(!isP, 20); 
+              }
+          }
       });
   }
 
   takeDamage(isP: boolean, dmg: number) {
-      if(this.isBattleOver) return;
+      if(this.isBattleOver || !this.scene.isActive()) return;
+      
       const def = isP ? this.playerDefending : this.enemyDefending;
       if(def) dmg = Math.floor(dmg * 0.3);
+      
       if(isP) this.playerHp = Math.max(0, this.playerHp - dmg);
       else this.enemyHp = Math.max(0, this.enemyHp - dmg);
       
       const target = isP ? this.player : this.enemy;
-      target.setTint(0xff0000);
-      this.time.delayedCall(100, () => target.clearTint());
+      if(target.active) {
+          target.setTint(0xff0000);
+          this.time.delayedCall(100, () => { 
+              if(target.active) target.clearTint(); 
+          });
+      }
+      
       this.updateUI();
       if(this.playerHp <= 0 || this.enemyHp <= 0) this.endBattle(this.playerHp > 0);
   }
@@ -683,6 +751,7 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   log(m: string) {
+      if(!this.logText.active) return;
       this.logText.setText(m).setAlpha(1);
       this.tweens.add({ targets: this.logText, alpha: 0, delay: 1000, duration: 500 });
   }
@@ -696,7 +765,7 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   enemyDecide() {
-      if(this.isBattleOver || this.p2ActionActive) return;
+      if(this.isBattleOver || this.p2ActionActive || !this.scene.isActive()) return;
       const r = Math.random();
       
       // AI Logic
@@ -708,11 +777,40 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   endBattle(win: boolean) {
+      if(this.isBattleOver) return; // Prevent double call
       this.isBattleOver = true;
       if(this.turnTimer) this.turnTimer.remove();
+      if(this.regenTimer) this.regenTimer.remove();
+      
       this.add.rectangle(480, 270, 960, 540, 0x000000, 0.7).setDepth(20);
-      this.add.text(480, 200, win ? "VICTORY!" : "DEFEAT...", { fontSize: '64px', color: win?'#0f0':'#f00' }).setOrigin(0.5).setDepth(21);
-      if(win) { this.gameState.coins += 100; window.UTLW.save(); }
+      
+      let message = "DEFEAT...";
+      let color = '#f00';
+      
+      if (this.gameState.gameMode === 'local_pvp') {
+          // PvP Outcome
+          if (win) { // P1 Wins
+              message = "PLAYER 1 WINS!";
+              color = '#3498db'; // Blue
+          } else { // P2 Wins
+              message = "PLAYER 2 WINS!";
+              color = '#e74c3c'; // Red
+          }
+          // Award coins in PvP regardless of who won (shared stash)
+          this.gameState.coins += 100;
+          window.UTLW.save();
+      } else {
+          // Single Player Outcome
+          if (win) {
+              message = "VICTORY!";
+              color = '#0f0';
+              this.gameState.coins += 100; 
+              window.UTLW.save();
+          }
+      }
+
+      this.add.text(480, 200, message, { fontSize: '64px', color: color }).setOrigin(0.5).setDepth(21);
+      
       const btn = this.add.text(480, 350, "RETURN TO MENU", { fontSize: '32px' }).setOrigin(0.5).setDepth(21).setInteractive({ useHandCursor: true });
       btn.on('pointerdown', () => this.scene.start('MenuScene'));
   }

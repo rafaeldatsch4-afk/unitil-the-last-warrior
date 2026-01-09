@@ -34,12 +34,15 @@ export default class BootScene extends Phaser.Scene {
           const parsed = JSON.parse(savedData);
           console.log('Found save data:', parsed);
           
-          // Restore coins
-          if (typeof parsed.coins === 'number') defaultState.coins = parsed.coins;
+          // Restore coins with type check
+          if (parsed && typeof parsed.coins === 'number' && !isNaN(parsed.coins)) {
+              defaultState.coins = parsed.coins;
+          }
           
-          // Restore unlocked characters
-          if (Array.isArray(parsed.characters)) {
+          // Restore unlocked characters safely
+          if (parsed && Array.isArray(parsed.characters)) {
             parsed.characters.forEach((savedChar: any) => {
+              if(!savedChar) return;
               const match = defaultState.characters.find(c => c.id === savedChar.id);
               if (match && savedChar.unlocked) {
                 match.unlocked = true;
@@ -50,6 +53,7 @@ export default class BootScene extends Phaser.Scene {
         }
       } catch (e) {
         console.error('Failed to load save data:', e);
+        // Fallback to default state silently if corrupt
       }
 
       // Set Global Object with Save Method
