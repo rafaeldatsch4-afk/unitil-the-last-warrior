@@ -12,6 +12,7 @@ export interface CharacterData {
   frameWidth: number;
   frameHeight: number;
   specialName: string;
+  superName: string;
   specialColor: number;
 }
 

@@ -32,8 +32,7 @@ const GameCanvas: React.FC = () => {
     <div 
       ref={containerRef} 
       id="game-container" 
-      className="w-[960px] h-[540px] bg-black"
-      style={{ maxWidth: '100%', height: 'auto', aspectRatio: '16/9' }}
+      className="w-full h-full bg-black"
     />
   );
 };

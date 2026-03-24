@@ -6,6 +6,7 @@ import CharacterSelectScene from './scenes/CharacterSelectScene';
 import BattleScene from './scenes/BattleScene';
 import StoreScene from './scenes/StoreScene';
 import SettingsScene from './scenes/SettingsScene';
+import PauseScene from './scenes/PauseScene';
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -14,6 +15,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   parent: 'game-container',
   backgroundColor: '#071026',
   pixelArt: true,
+  resolution: window.devicePixelRatio || 1,
   scene: [
     BootScene,
     PreloadScene,
@@ -21,7 +23,8 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     CharacterSelectScene,
     BattleScene,
     StoreScene,
-    SettingsScene
+    SettingsScene,
+    PauseScene
   ],
   physics: {
     default: 'arcade',

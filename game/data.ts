@@ -14,6 +14,7 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     frameWidth: 64,
     frameHeight: 64,
     specialName: "KAMEHAMEHA",
+    superName: "GENKIDAMA",
     specialColor: 0x00ffff
   },
   {
@@ -28,6 +29,7 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     frameWidth: 64,
     frameHeight: 64,
     specialName: "GALICK GUN",
+    superName: "FINAL FLASH",
     specialColor: 0x9b59b6
   },
   {
@@ -42,6 +44,7 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     frameWidth: 64,
     frameHeight: 64,
     specialName: "MASENKO",
+    superName: "FATHER-SON KAMEHAMEHA",
     specialColor: 0xffff00
   },
   {
@@ -56,6 +59,7 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     frameWidth: 64,
     frameHeight: 64,
     specialName: "MAKANKOSAPPO",
+    superName: "HELLZONE GRENADE",
     specialColor: 0xffff00
   },
   {
@@ -70,6 +74,7 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     frameWidth: 64,
     frameHeight: 64,
     specialName: "DEATH BEAM",
+    superName: "DEATH BALL",
     specialColor: 0xff00ff
   },
   {
@@ -84,6 +89,7 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     frameWidth: 64,
     frameHeight: 64,
     specialName: "KAMEHAMEHA",
+    superName: "SOLAR KAMEHAMEHA",
     specialColor: 0x00ff00
   },
   {
@@ -98,6 +104,7 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     frameWidth: 64,
     frameHeight: 64,
     specialName: "KATANA SLASH",
+    superName: "NINJA BARRAGE",
     specialColor: 0x3498db
   },
   {
@@ -112,6 +119,7 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     frameWidth: 64,
     frameHeight: 64,
     specialName: "ZOLTRAAK",
+    superName: "BLACK HOLE",
     specialColor: 0xdfe6e9 // White/Silver Energy
   },
   {
@@ -119,13 +127,14 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     key: "optimus",
     name: "Optimus Prime",
     price: 800,
-    unlocked: false,
+    unlocked: true,
     maxHp: 250,
     transformAvailable: true, // Truck Mode
     sprite: "",
     frameWidth: 64,
     frameHeight: 64,
     specialName: "MISSILE STRIKE",
+    superName: "MATRIX BLAST",
     specialColor: 0xff6b6b
   },
   {
@@ -140,6 +149,52 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     frameWidth: 64,
     frameHeight: 64,
     specialName: "PANCAKES",
+    superName: "MEGA PANCAKE",
     specialColor: 0x00aaff
+  },
+  {
+    id: 10,
+    key: "cyberninja",
+    name: "Cyber Zero",
+    price: 1000,
+    unlocked: true,
+    maxHp: 200,
+    transformAvailable: true, // Overdrive Mode
+    sprite: "",
+    frameWidth: 64,
+    frameHeight: 64,
+    specialName: "PLASMA DASH",
+    superName: "CYBER OVERDRIVE",
+    specialColor: 0x00eaff
+  },
+  {
+    id: 11,
+    key: "chapolim",
+    name: "Chapolim",
+    price: 1200,
+    unlocked: true,
+    maxHp: 180,
+    transformAvailable: false,
+    sprite: "",
+    frameWidth: 64,
+    frameHeight: 64,
+    specialName: "CHIPOTE CHILLÓN",
+    superName: "AEROLITOS",
+    specialColor: 0xff0000
+  },
+  {
+    id: 12,
+    key: "naruto",
+    name: "Naruto",
+    price: 1500,
+    unlocked: true,
+    maxHp: 220,
+    transformAvailable: true,
+    sprite: "",
+    frameWidth: 64,
+    frameHeight: 64,
+    specialName: "RASENGAN",
+    superName: "RASENSHURIKEN",
+    specialColor: 0x3498db
   }
 ];

@@ -34,11 +34,13 @@ export default class BootScene extends Phaser.Scene {
           const parsed = JSON.parse(savedData);
           console.log('Found save data:', parsed);
           
-          // Restore coins with type check
-          if (parsed && typeof parsed.coins === 'number' && !isNaN(parsed.coins)) {
-              defaultState.coins = parsed.coins;
-          }
-          
+          // Restore basic stats
+          if (parsed.coins !== undefined && !isNaN(parsed.coins)) defaultState.coins = parsed.coins;
+          if (parsed.difficulty !== undefined) defaultState.difficulty = parsed.difficulty;
+          if (parsed.gameMode) defaultState.gameMode = parsed.gameMode;
+          if (parsed.p1CharacterId !== undefined) defaultState.p1CharacterId = parsed.p1CharacterId;
+          if (parsed.p2CharacterId !== undefined) defaultState.p2CharacterId = parsed.p2CharacterId;
+
           // Restore unlocked characters safely
           if (parsed && Array.isArray(parsed.characters)) {
             parsed.characters.forEach((savedChar: any) => {
@@ -63,15 +65,28 @@ export default class BootScene extends Phaser.Scene {
           try {
             const dataToSave = {
               coins: window.UTLW.state.coins,
+              difficulty: window.UTLW.state.difficulty,
+              gameMode: window.UTLW.state.gameMode,
+              p1CharacterId: window.UTLW.state.p1CharacterId,
+              p2CharacterId: window.UTLW.state.p2CharacterId,
               characters: window.UTLW.state.characters.map(c => ({ id: c.id, unlocked: c.unlocked }))
             };
             localStorage.setItem('utlw_save_v1', JSON.stringify(dataToSave));
-            console.log('Game Saved Successfully');
+            // console.log('Game Saved'); // Uncomment for debugging
           } catch (e) {
             console.error('Failed to save game:', e);
           }
         }
       };
+
+      // --- AUTO SAVE SYSTEM ---
+      // Automatically save every 5 seconds to prevent data loss on reload/crash
+      setInterval(() => {
+          if(window.UTLW && window.UTLW.save) {
+              window.UTLW.save();
+          }
+      }, 5000);
+      console.log('Auto-Save initialized (5s interval)');
     }
 
     // Ensure registry is synced

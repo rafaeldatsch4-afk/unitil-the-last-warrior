@@ -78,13 +78,6 @@ export default class CharacterSelectScene extends Phaser.Scene {
       if (this.state.gameMode === 'single') {
           this.fightBtn.setVisible(true);
       } else {
-          // No PvP, mostrar botão apenas se já tiver passado pelo passo 1 (estiver voltando para P1 ou já escolheu P2)
-          // Mas como resetamos selectionStep no create, assumimos que P2 ainda não foi escolhido se step == 1
-          // Lógica simplificada: Se P1 e P2 forem diferentes (ou se o usuário confirmou), mostraria.
-          // Aqui, mostraremos o botão sempre que for PvP, mas clicar nele deveria garantir que P2 foi setado
-          // Para evitar confusão, vamos mostrar o botão apenas quando P2 tiver sido selecionado.
-          // Como o selectionStep alterna 0->1->0, se estivermos em 0 E P2 já tiver sido atualizado... é complexo.
-          // Melhor abordagem: Mostrar o botão Lutar sempre que for PvP, assumindo os IDs atuais.
           this.fightBtn.setVisible(true); 
       }
   }
@@ -98,9 +91,9 @@ export default class CharacterSelectScene extends Phaser.Scene {
       this.charContainer.removeAll(true);
       const unlockedChars = this.state.characters.filter(c => c.unlocked);
       
-      const cardSize = 110;
-      const gap = 20;
-      const itemsPerRow = 5;
+      const cardSize = 90;
+      const gap = 15;
+      const itemsPerRow = 7;
       const totalWidth = (itemsPerRow * cardSize) + ((itemsPerRow - 1) * gap);
       const startX = -(totalWidth / 2) + (cardSize / 2);
 
@@ -108,7 +101,7 @@ export default class CharacterSelectScene extends Phaser.Scene {
           const col = index % itemsPerRow;
           const row = Math.floor(index / itemsPerRow);
           const x = startX + (col * (cardSize + gap));
-          const y = (row * (cardSize + 40));
+          const y = (row * (cardSize + 30));
 
           const isP1 = this.state.p1CharacterId === char.id;
           const isP2 = this.state.p2CharacterId === char.id && this.state.gameMode === 'local_pvp';
@@ -123,9 +116,9 @@ export default class CharacterSelectScene extends Phaser.Scene {
 
           // GLOW EFFECT
           if (isSelected) {
-              const glow = this.add.rectangle(0, 0, cardSize + 16, cardSize + 16, strokeColor)
+              const glow = this.add.rectangle(0, 0, cardSize + 12, cardSize + 12, strokeColor)
                   .setAlpha(0.2)
-                  .setDepth(-1); // Ensures it sits behind the bg added later
+                  .setDepth(-1); 
               
               card.add(glow);
 
@@ -141,25 +134,14 @@ export default class CharacterSelectScene extends Phaser.Scene {
           }
 
           const bg = this.add.rectangle(0, 0, cardSize, cardSize, bgColor)
-              .setStrokeStyle(isSelected ? 4 : 2, strokeColor);
+              .setStrokeStyle(isSelected ? 3 : 2, strokeColor);
 
-          // Mask to keep large sprites contained within the card
-          const maskShape = this.make.graphics({});
-          maskShape.fillStyle(0xffffff);
-          // Absolute position calculation for mask geometry
-          const absX = (this.cameras.main.width / 2) + x - (cardSize / 2);
-          const absY = 260 + y - (cardSize / 2);
-          maskShape.fillRect(absX, absY, cardSize, cardSize);
-          const mask = maskShape.createGeometryMask();
-          
-          // Updated Sprite Positioning for 128px tall sprites
-          // Moved Y to +45 (downwards) so the head/chest is visible in the card center.
-          const sprite = this.add.sprite(0, 45, char.key, 0)
-              .setScale(1.6)
-              .setMask(mask); 
+          // Correctly center the sprite (Mask removed to prevent visibility issues)
+          const sprite = this.add.sprite(0, -48, char.key, 0)
+              .setScale(1.3);
 
-          const nameTxt = this.add.text(0, cardSize/2 - 15, char.name, {
-              fontSize: '14px',
+          const nameTxt = this.add.text(0, cardSize/2 - 12, char.name, {
+              fontSize: '12px',
               fontStyle: 'bold',
               color: isSelected ? '#fff' : '#aaa'
           }).setOrigin(0.5);
@@ -172,36 +154,23 @@ export default class CharacterSelectScene extends Phaser.Scene {
           bg.setInteractive({ useHandCursor: true })
              .on('pointerdown', () => this.selectCharacter(char.id))
              .on('pointerover', () => {
-                 // Prevent hover effect if selected to avoid tween conflict
                  if (!isSelected) {
-                    this.tweens.add({
-                        targets: card,
-                        scale: 1.1,
-                        duration: 100,
-                        ease: 'Sine.easeInOut'
-                    });
-                    bg.setStrokeStyle(4, 0xffffff); // Highlight border
-                    card.setAlpha(1); // Full opacity
+                    this.tweens.add({ targets: card, scale: 1.1, duration: 100, ease: 'Sine.easeInOut' });
+                    bg.setStrokeStyle(4, 0xffffff); 
+                    card.setAlpha(1); 
                     nameTxt.setColor('#fff');
                  }
              })
              .on('pointerout', () => {
-                 // Prevent hover effect if selected
                  if (!isSelected) {
-                    this.tweens.add({
-                        targets: card,
-                        scale: 1.0,
-                        duration: 100,
-                        ease: 'Sine.easeInOut'
-                    });
-                    bg.setStrokeStyle(2, strokeColor); // Revert border
-                    card.setAlpha(0.7); // Revert opacity
+                    this.tweens.add({ targets: card, scale: 1.0, duration: 100, ease: 'Sine.easeInOut' });
+                    bg.setStrokeStyle(2, strokeColor); 
+                    card.setAlpha(0.7); 
                     nameTxt.setColor('#aaa');
                  }
              });
 
           if (isSelected) {
-              // Subtle breathing for the card itself
               this.tweens.add({ targets: card, scale: 1.02, duration: 800, yoyo: true, repeat: -1 });
           } else {
               card.setAlpha(0.7);

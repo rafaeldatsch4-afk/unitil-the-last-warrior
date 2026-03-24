@@ -48,6 +48,9 @@ export default class PreloadScene extends Phaser.Scene {
     });
 
     this.load.image('arena', 'https://labs.phaser.io/assets/skies/space3.png');
+    this.load.image('arena_namek', 'https://labs.phaser.io/assets/skies/sky4.png');
+    this.load.image('arena_city', 'https://labs.phaser.io/assets/skies/sunset.png');
+    this.load.image('arena_tournament', 'https://labs.phaser.io/assets/skies/clouds.png');
   }
 
   create() {
@@ -65,7 +68,7 @@ export default class PreloadScene extends Phaser.Scene {
           // Also remove anims to prevent stale references
           if(this.anims.exists(`${c.key}_idle`)) this.anims.remove(`${c.key}_idle`);
       }
-      this.generateLSWSprite(c.key, false);
+      this.generateLSWSprite(c.key, 0);
       
       // Transformation
       if(c.transformAvailable) {
@@ -74,7 +77,17 @@ export default class PreloadScene extends Phaser.Scene {
             this.textures.remove(keySSJ);
             if(this.anims.exists(`${keySSJ}_idle`)) this.anims.remove(`${keySSJ}_idle`);
         }
-        this.generateLSWSprite(c.key, true);
+        this.generateLSWSprite(c.key, 1);
+        
+        // Add UI/UE transformation for Goku and Vegeta
+        if (c.key === 'goku' || c.key === 'vegeta') {
+            const keyUI = `${c.key}_ui`;
+            if (this.textures.exists(keyUI)) {
+                this.textures.remove(keyUI);
+                if(this.anims.exists(`${keyUI}_idle`)) this.anims.remove(`${keyUI}_idle`);
+            }
+            this.generateLSWSprite(c.key, 2);
+        }
       }
     });
 
@@ -164,6 +177,8 @@ export default class PreloadScene extends Phaser.Scene {
     // Generate SFX
     generateSynthSound('sfx_select', 0.1, 'sine', 800, 1200, 0.3);
     generateSynthSound('sfx_attack', 0.1, 'square', 200, 50, 0.5);
+    generateSynthSound('sfx_hit', 0.15, 'sawtooth', 150, 50, 0.6);
+    generateSynthSound('sfx_block', 0.1, 'sine', 400, 300, 0.4);
     generateSynthSound('sfx_beam', 1.0, 'sawtooth', 400, 100, 0.3);
     generateSynthSound('sfx_transform', 1.5, 'square', 100, 300, 0.4);
     generateSynthSound('sfx_transform_mech', 1.5, 'sawtooth', 50, 600, 0.6);
@@ -201,7 +216,9 @@ export default class PreloadScene extends Phaser.Scene {
   // PIXEL ART ENGINE (32x32 GRID SCALED 2x) - LSW / POWER WARRIORS STYLE
   // GENERATES A 4-FRAME SPRITESHEET
   // =================================================================================
-  generateLSWSprite(key: string, isTransformed: boolean) {
+  generateLSWSprite(key: string, form: number) {
+    const isTransformed = form > 0;
+    const isUI = form === 2;
     const SCALE = 2;
     const FRAME_WIDTH = 32;
     const FRAME_HEIGHT = 64; // Taller frame to support big hair
@@ -260,15 +277,31 @@ export default class PreloadScene extends Phaser.Scene {
                 const BOOT_ROPE = 0xeaddcf;
                 const HAIR_BLACK = 0x1a1a1a; 
                 
-                // NEW GOLDEN SSJ PALETTE (REMASTERED)
+                // SSJ PALETTE
                 const HAIR_SSJ_GOLD = 0xffd93b; 
                 const HAIR_SSJ_SHADOW = 0xcfa721;
                 const HAIR_SSJ_LIGHT = 0xffffaa;
                 const EYE_SSJ_TEAL = 0x00f2ff;
 
-                const hairColor = isTransformed ? HAIR_SSJ_GOLD : HAIR_BLACK;
-                const eyeColor = isTransformed ? EYE_SSJ_TEAL : 0x111111;
-                const eyebrowColor = isTransformed ? HAIR_SSJ_SHADOW : HAIR_BLACK;
+                // ULTRA INSTINCT PALETTE
+                const HAIR_UI_SILVER = 0xe0e0e0; 
+                const HAIR_UI_SHADOW = 0x9e9e9e;
+                const HAIR_UI_LIGHT = 0xffffff;
+                const EYE_UI_SILVER = 0xcccccc;
+
+                let hairColor = HAIR_BLACK;
+                let eyeColor = 0x111111;
+                let eyebrowColor = HAIR_BLACK;
+
+                if (isUI) {
+                    hairColor = HAIR_UI_SILVER;
+                    eyeColor = EYE_UI_SILVER;
+                    eyebrowColor = HAIR_UI_SHADOW;
+                } else if (isTransformed) {
+                    hairColor = HAIR_SSJ_GOLD;
+                    eyeColor = EYE_SSJ_TEAL;
+                    eyebrowColor = HAIR_SSJ_SHADOW;
+                }
 
                 // --- BODY ---
                 // Legs
@@ -292,7 +325,7 @@ export default class PreloadScene extends Phaser.Scene {
                 const knotY = (f % 2 === 0) ? 23 : 24; 
                 box(11, 23, 2, 4, SASH_BLUE); dot(12, 27, SASH_BLUE);
 
-                if (!isTransformed) {
+                if (!isUI) {
                     // Kanji Symbol (Turtle/Kai)
                     box(17, 16, 3, 3, 0xffffff); dot(18, 17, 0x111111);
                 }
@@ -316,67 +349,104 @@ export default class PreloadScene extends Phaser.Scene {
                 headDot(15, 11, 0xdca880); // Nose
 
                 canvas.fillStyle(hairColor, 1);
-                if (!isTransformed) {
-                    // BASE GOKU (Palm Tree)
-                    headBox(11, 2, 10, 6, hairColor); // Main Volume
-                    headBox(14, 0, 4, 2, hairColor); // Top bump
-                    
-                    // Spikes Left (Curved)
-                    headBox(9, 3, 2, 4, hairColor); headDot(8, 5, hairColor);
-                    headBox(7, 4, 2, 3, hairColor);
-                    
-                    // Spikes Right
-                    headBox(21, 3, 2, 3, hairColor); headDot(23, 5, hairColor);
-                    
-                    // Bangs (Base)
-                    headBox(13, 6, 2, 2, hairColor);
-                    headBox(16, 6, 3, 2, hairColor);
-                } else {
-                    // === GOKU SSJ REMASTERED (v5 - The "Swept Back" Look) ===
-                    // Design: Main hair mass sweeps strongly UP and BACK (Left).
-                    
-                    // 1. Base Volume
-                    headBox(10, -2, 12, 8, hairColor);
-
-                    // 2. The Big Sweep (Going Back/Left and Up)
-                    headBox(6, -6, 10, 10, hairColor); 
-                    headBox(4, -12, 8, 8, hairColor); 
-                    headBox(2, -18, 6, 8, hairColor); // Tip far back-left
-                    headDot(2, -19, HAIR_SSJ_LIGHT);
-
-                    // 3. Central/Top Spikes (Vertical but angled)
-                    headBox(14, -10, 6, 10, hairColor);
-                    headBox(16, -16, 4, 8, hairColor);
-                    headDot(18, -17, HAIR_SSJ_LIGHT);
-
-                    // 4. Front Spikes (Bangs standing up/forward)
-                    headBox(20, -4, 4, 8, hairColor);
-                    headBox(22, 0, 2, 4, hairColor);
-
-                    // 5. Forehead Bang (Classic LSW style)
-                    headBox(16, 4, 3, 5, hairColor);
-                    headDot(17, 8, HAIR_SSJ_LIGHT);
-
-                    // 6. Shading for depth (Roots and underside)
-                    headBox(11, 0, 10, 2, HAIR_SSJ_SHADOW); 
-                    headDot(15, -4, HAIR_SSJ_SHADOW);
-                    headDot(7, -4, HAIR_SSJ_SHADOW);
-                }
+                
+                // GOKU HAIR (Same shape for all forms, just different color)
+                // Main Volume
+                headBox(11, 2, 10, 6, hairColor); 
+                headBox(14, 0, 4, 2, hairColor); // Top bump
+                
+                // Spikes Left (Curved)
+                headBox(9, 3, 2, 4, hairColor); headDot(8, 5, hairColor);
+                headBox(7, 4, 2, 3, hairColor);
+                
+                // Spikes Right
+                headBox(21, 3, 2, 3, hairColor); headDot(23, 5, hairColor);
+                
+                // Bangs (Base)
+                headBox(13, 6, 2, 2, hairColor);
+                headBox(16, 6, 3, 2, hairColor);
+                
                 break;
             }
             case 'vegeta': {
-                const SUIT_BLUE = 0x1a2a6c; const SUIT_SHADOW = 0x111b44; const ARMOR_WHITE = 0xfbfbfb; const ARMOR_SHADOW = 0xd0d0d0; const GOLD = 0xffd700;
-                const HAIR = isTransformed ? 0xffe14c : BLACK; const EYE = isTransformed ? 0x00e5bb : BLACK; const BROW = isTransformed ? 0xffe14c : BLACK;
-                box(10, 23, 4, 7, SUIT_BLUE); box(18, 23, 4, 7, SUIT_BLUE);
-                box(10, 29, 4, 3, ARMOR_WHITE); box(18, 29, 4, 3, ARMOR_WHITE); box(10, 31, 4, 1, GOLD); box(18, 31, 4, 1, GOLD); box(11, 29, 2, 3, ARMOR_SHADOW); box(19, 29, 2, 3, ARMOR_SHADOW);
-                box(11, 19, 10, 5, SUIT_BLUE); dot(15, 19, SUIT_SHADOW); dot(16, 19, SUIT_SHADOW); dot(13, 20, SUIT_SHADOW); dot(18, 20, SUIT_SHADOW);
-                box(10, 14, 12, 5, ARMOR_WHITE); box(10, 17, 12, 1, ARMOR_SHADOW); box(11, 14, 3, 5, GOLD); box(18, 14, 3, 5, GOLD); 
-                box(5, 14, 5, 2, GOLD); box(5, 16, 5, 3, ARMOR_WHITE); box(22, 14, 5, 2, GOLD); box(22, 16, 5, 3, ARMOR_WHITE);
-                box(8, 15, 3, 5, SUIT_BLUE); box(21, 15, 3, 5, SUIT_BLUE); box(8, 20, 3, 4, ARMOR_WHITE); box(21, 20, 3, 4, ARMOR_WHITE); box(8, 19, 3, 1, ARMOR_SHADOW); box(21, 19, 3, 1, ARMOR_SHADOW);
-                headBox(12, 6, 8, 7, SKIN); headDot(12, 6, HAIR); headDot(13, 7, HAIR); headDot(19, 6, HAIR); headDot(18, 7, HAIR);
-                headDot(13, 9, WHITE); headDot(17, 9, WHITE); headDot(14, 9, EYE); headDot(17, 9, EYE); headDot(13, 8, BROW); headDot(14, 8, BROW); headDot(17, 8, BROW); headDot(18, 8, BROW);
-                canvas.fillStyle(HAIR, 1); headBox(13, 0, 6, 6, HAIR); headBox(11, 2, 2, 4, HAIR); headBox(19, 2, 2, 4, HAIR); headBox(12, 5, 8, 2, HAIR);
-                if(isTransformed) { headDot(14, -1, HAIR); headDot(17, -1, HAIR); headDot(10, 3, HAIR); headDot(21, 3, HAIR); }
+                const SUIT_BLUE = 0x1a2a6c; const SUIT_SHADOW = 0x111b44; const SUIT_LIGHT = 0x2a3a8c;
+                const ARMOR_WHITE = 0xfbfbfb; const ARMOR_SHADOW = 0xd0d0d0; const ARMOR_DARK = 0xa0a0a0;
+                const GOLD = 0xffd700; const GOLD_SHADOW = 0xccaa00;
+                
+                let HAIR = BLACK;
+                let EYE = BLACK;
+                let BROW = BLACK;
+                if (isUI) { // Ultra Ego
+                    HAIR = 0x9b59b6; // Purple
+                    EYE = 0xff00ff; // Magenta
+                    BROW = 0xe0ac7d; // No eyebrows, just brow ridge
+                } else if (isTransformed) { // SSJ
+                    HAIR = 0xffe14c;
+                    EYE = 0x00e5bb;
+                    BROW = 0xffe14c;
+                }
+                
+                // Legs (more shaped, tapering down)
+                box(11, 23, 4, 6, SUIT_BLUE); box(17, 23, 4, 6, SUIT_BLUE); // Thighs
+                box(12, 23, 2, 6, SUIT_LIGHT); box(18, 23, 2, 6, SUIT_LIGHT); // Thigh highlights
+                
+                // Boots (pointed tips, rounded tops)
+                box(11, 28, 4, 3, ARMOR_WHITE); box(17, 28, 4, 3, ARMOR_WHITE);
+                box(10, 30, 5, 2, ARMOR_WHITE); box(17, 30, 5, 2, ARMOR_WHITE);
+                box(10, 31, 5, 1, GOLD); box(17, 31, 5, 1, GOLD);
+                dot(10, 30, GOLD); dot(14, 30, GOLD); dot(17, 30, GOLD); dot(21, 30, GOLD); // Gold tips shape
+                box(12, 28, 2, 3, ARMOR_SHADOW); box(18, 28, 2, 3, ARMOR_SHADOW); // Boot shadow
+                
+                // Torso (Suit underneath)
+                box(12, 19, 8, 5, SUIT_BLUE);
+                box(13, 19, 6, 5, SUIT_LIGHT);
+                
+                // Armor (Chest piece)
+                box(11, 14, 10, 5, ARMOR_WHITE); // Main chest
+                box(12, 17, 8, 2, ARMOR_SHADOW); // Abdomen segments
+                box(11, 14, 2, 5, GOLD); box(19, 14, 2, 5, GOLD); // Straps/Side gold
+                box(13, 15, 6, 2, ARMOR_DARK); // Chest lines
+                
+                // Shoulders (Iconic pointy pads)
+                box(7, 13, 4, 2, GOLD); box(6, 14, 5, 2, ARMOR_WHITE);
+                dot(6, 13, GOLD); dot(5, 14, ARMOR_WHITE); // Left tip
+                box(21, 13, 4, 2, GOLD); box(21, 14, 5, 2, ARMOR_WHITE);
+                dot(25, 13, GOLD); dot(26, 14, ARMOR_WHITE); // Right tip
+                
+                // Arms
+                box(8, 16, 3, 4, SUIT_BLUE); box(21, 16, 3, 4, SUIT_BLUE);
+                
+                // Gloves
+                box(7, 20, 4, 4, ARMOR_WHITE); box(21, 20, 4, 4, ARMOR_WHITE);
+                box(8, 20, 2, 4, ARMOR_SHADOW); box(22, 20, 2, 4, ARMOR_SHADOW);
+                
+                // Head/Face (Less blocky)
+                headBox(12, 5, 8, 7, SKIN); // Face base
+                headBox(13, 12, 6, 1, SKIN); // Chin
+                
+                // Eyes & Brow
+                headBox(13, 8, 2, 1, WHITE); headBox(17, 8, 2, 1, WHITE); // Whites
+                headDot(14, 8, EYE); headDot(17, 8, EYE); // Pupils
+                headBox(12, 7, 3, 1, BROW); headBox(17, 7, 3, 1, BROW); // Angry brows
+                headDot(14, 7, SKIN); headDot(17, 7, SKIN); // Angle the brows
+                
+                // Hair (Vegeta's flame shape & widow's peak)
+                headBox(12, 1, 8, 4, HAIR);
+                headBox(11, 2, 10, 3, HAIR);
+                headBox(13, -1, 6, 2, HAIR);
+                headDot(14, -2, HAIR); headDot(17, -2, HAIR);
+                headDot(15, 5, HAIR); headDot(16, 5, HAIR); // Widow's peak center
+                headDot(14, 4, HAIR); headDot(17, 4, HAIR); // Widow's peak sides
+                headDot(12, 5, HAIR); headDot(19, 5, HAIR); // Sideburns top
+                headDot(12, 6, HAIR); headDot(19, 6, HAIR); // Sideburns bottom
+                
+                if (isTransformed) {
+                    // Taller, spikier hair for SSJ/UE
+                    headBox(12, 0, 8, 5, HAIR);
+                    headBox(13, -2, 6, 2, HAIR);
+                    headDot(14, -3, HAIR); headDot(17, -3, HAIR);
+                    headDot(10, 2, HAIR); headDot(21, 2, HAIR);
+                }
                 break;
             }
             case 'piccolo': {
@@ -390,71 +460,324 @@ export default class PreloadScene extends Phaser.Scene {
                 break;
             }
             case 'gohan': {
-                const GI_PURPLE = 0x2e1a47; const GI_SHADOW = 0x1d0f2e; const SASH_RED = 0xd92525; const SHOE_BROWN = 0x6d4c41; const HAIR_BASE = BLACK; const HAIR_BEAST = 0xddeeff; const EYE_BEAST = 0xff0000;
+                const GI_PURPLE = 0x2e1a47; const GI_SHADOW = 0x1d0f2e; const SASH_RED = 0xd92525; const SHOE_BROWN = 0x6d4c41; const HAIR_BASE = BLACK; const HAIR_BEAST = 0xeeeeff; const EYE_BEAST = 0xff0000;
                 const hairColor = isTransformed ? HAIR_BEAST : HAIR_BASE; const eyeColor = isTransformed ? EYE_BEAST : BLACK;
+
+                if (isTransformed) {
+                    // Layered Violet/Magenta Aura
+                    const AURA_VIOLET = 0x8a2be2;
+                    const AURA_MAGENTA = 0xff00ff;
+                    const AURA_LIGHT = 0xddaaff;
+                    
+                    const drawAura = (x: number, y: number, w: number, h: number) => {
+                        canvas.fillRect((offsetX + x) * SCALE, (breatheOffset + y + DRAW_OFFSET_Y) * SCALE, w * SCALE, h * SCALE);
+                    };
+
+                    // Outer violet aura (jagged)
+                    canvas.fillStyle(AURA_VIOLET, 0.3);
+                    drawAura(2, -20, 28, 52);
+                    drawAura(4, -26, 24, 58);
+                    drawAura(8, -32, 16, 64);
+                    
+                    // Inner magenta aura
+                    canvas.fillStyle(AURA_MAGENTA, 0.5);
+                    drawAura(5, -12, 22, 44);
+                    drawAura(7, -18, 18, 50);
+                    drawAura(10, -24, 12, 56);
+                    
+                    // Core light aura
+                    canvas.fillStyle(AURA_LIGHT, 0.6);
+                    drawAura(8, -4, 16, 36);
+                    drawAura(12, -12, 8, 44);
+                    
+                    // Aura lightning / energy sparks
+                    canvas.fillStyle(0xffffff, 0.8);
+                    if (f % 3 === 0) {
+                        drawAura(6, 10, 2, 8); drawAura(8, 16, 4, 2); drawAura(10, 18, 2, 6);
+                        drawAura(24, -5, 2, 6); drawAura(22, 0, 4, 2);
+                    } else if (f % 3 === 1) {
+                        drawAura(26, 15, 2, 8); drawAura(22, 21, 4, 2); drawAura(20, 23, 2, 6);
+                        drawAura(6, -8, 2, 6); drawAura(8, -4, 4, 2);
+                    } else {
+                        drawAura(4, 0, 2, 6); drawAura(6, 4, 4, 2);
+                        drawAura(24, 25, 2, 8); drawAura(20, 31, 4, 2);
+                    }
+                }
+
                 box(10, 23, 4, 7, GI_PURPLE); box(18, 23, 4, 7, GI_PURPLE); box(10, 30, 4, 2, SHOE_BROWN); box(18, 30, 4, 2, SHOE_BROWN);
                 box(11, 14, 10, 9, GI_PURPLE); box(12, 16, 8, 3, GI_SHADOW); box(11, 22, 10, 3, SASH_RED); box(8, 19, 3, 3, GI_PURPLE); box(21, 19, 3, 3, GI_PURPLE); box(8, 15, 3, 4, SKIN); box(21, 15, 3, 4, SKIN); box(8, 22, 3, 2, SKIN); box(21, 22, 3, 2, SKIN);
-                headBox(12, 6, 8, 7, SKIN); headDot(13, 9, WHITE); headDot(17, 9, WHITE); headDot(14, 9, eyeColor); headDot(17, 9, eyeColor); headDot(15, 11, 0xcc8866);
-                canvas.fillStyle(hairColor, 1);
-                if (isTransformed) { headBox(12, -12, 8, 18, hairColor); headBox(10, -5, 2, 10, hairColor); headBox(20, -5, 2, 10, hairColor); headBox(8, -2, 3, 6, hairColor); headBox(21, -2, 3, 6, hairColor); headBox(15, 6, 2, 6, hairColor); headDot(14, 9, 0xff0000); headDot(17, 9, 0xff0000); } else { headBox(12, 2, 8, 4, hairColor); headBox(13, 0, 2, 3, hairColor); headBox(17, 0, 2, 3, hairColor); headBox(15, -1, 2, 4, hairColor); headDot(16, 6, hairColor); }
+                
+                headBox(12, 6, 8, 7, SKIN); 
+                
+                if (isTransformed) {
+                    // Fierce Piercing Red Eyes
+                    headBox(12, 9, 3, 2, WHITE); headBox(17, 9, 3, 2, WHITE); 
+                    headBox(13, 9, 2, 2, EYE_BEAST); headBox(17, 9, 2, 2, EYE_BEAST);
+                    headDot(14, 9, WHITE); headDot(18, 9, WHITE); // Piercing glint
+                    
+                    // Angled eyebrows (thicker)
+                    headBox(11, 7, 4, 2, 0x880000); 
+                    headBox(17, 7, 4, 2, 0x880000);
+                    headDot(14, 8, 0x880000); headDot(17, 8, 0x880000);
+                } else {
+                    headDot(13, 9, WHITE); headDot(17, 9, WHITE); 
+                    headDot(14, 9, eyeColor); headDot(17, 9, eyeColor); 
+                }
+                headDot(15, 11, 0xcc8866);
+
+                if (isTransformed) { 
+                    // Massive gravity-defying silver/white hair
+                    headBox(9, 2, 14, 5, hairColor); // Base
+                    
+                    // Main central-back spike (huge, reaching up to -30)
+                    headBox(12, -22, 8, 24, hairColor); 
+                    headBox(13, -26, 6, 4, hairColor);
+                    headBox(14, -28, 4, 2, hairColor);
+                    headBox(15, -30, 2, 2, hairColor);
+                    
+                    // Left sweeping spikes
+                    headBox(6, -12, 6, 14, hairColor);
+                    headBox(4, -18, 4, 8, hairColor);
+                    headBox(2, -22, 3, 6, hairColor);
+                    headBox(1, -24, 2, 4, hairColor);
+                    
+                    // Right sweeping spikes
+                    headBox(20, -12, 6, 14, hairColor);
+                    headBox(24, -18, 4, 8, hairColor);
+                    headBox(27, -22, 3, 6, hairColor);
+                    headBox(29, -24, 2, 4, hairColor);
+                    
+                    // Lower side spikes
+                    headBox(4, -2, 5, 8, hairColor);
+                    headBox(2, 2, 3, 6, hairColor);
+                    headBox(23, -2, 5, 8, hairColor);
+                    headBox(27, 2, 3, 6, hairColor);
+                    
+                    // Front bang (iconic single large bang)
+                    headBox(13, 6, 4, 8, hairColor);
+                    headBox(14, 14, 2, 4, hairColor);
+                    headBox(15, 18, 1, 2, hairColor);
+                    
+                    // Hair shading (light blue/grey)
+                    const shade = 0xbbccdd;
+                    headBox(12, -22, 2, 24, shade);
+                    headBox(13, -26, 1, 4, shade);
+                    headBox(6, -12, 2, 14, shade);
+                    headBox(4, -18, 1, 8, shade);
+                    headBox(20, -12, 2, 14, shade);
+                    headBox(24, -18, 1, 8, shade);
+                    headBox(13, 6, 1, 8, shade);
+                } else { 
+                    headBox(12, 2, 8, 4, hairColor); headBox(13, 0, 2, 3, hairColor); headBox(17, 0, 2, 3, hairColor); headBox(15, -1, 2, 4, hairColor); headDot(16, 6, hairColor); 
+                }
                 break;
             }
             case 'frieza': {
-                const WHITE_SKIN = 0xffffff; const WHITE_SHADOW = 0xd0d0e0; const PURPLE_GEM = 0x660099; const PURPLE_SHADOW = 0x330055; const PURPLE_HIGHLIGHT = 0xaa44dd; const GOLD_SKIN = 0xffd700; const GOLD_SHADOW = 0xc5a000; const DARK_SKIN = 0x5d4037;
-                const mainColor = isTransformed ? GOLD_SKIN : WHITE_SKIN; const shadowColor = isTransformed ? GOLD_SHADOW : WHITE_SHADOW; const gemColor = isTransformed ? GOLD_SKIN : PURPLE_GEM; const gemShadow = isTransformed ? GOLD_SHADOW : PURPLE_SHADOW; const secondaryColor = isTransformed ? DARK_SKIN : WHITE_SKIN; 
+                const WHITE_SKIN = 0xfbfbff; 
+                const WHITE_SHADOW = 0xc0c0d0; 
+                const PURPLE_GEM = 0x660099; 
+                const PURPLE_HIGHLIGHT = 0xaa44dd; 
+                const PURPLE_SHADOW = 0x330055;
+
+                const GOLD_SKIN = 0xffd700; 
+                const GOLD_SHADOW = 0xccaa00; 
+                const GOLD_HIGHLIGHT = 0xfff080;
+                const DARK_PURPLE_SKIN = 0x5c2b6b; 
+                const DARK_PURPLE_SHADOW = 0x3d1c47;
+
+                const mainColor = isTransformed ? GOLD_SKIN : WHITE_SKIN;
+                const mainShadow = isTransformed ? GOLD_SHADOW : WHITE_SHADOW;
+                const mainHighlight = isTransformed ? GOLD_HIGHLIGHT : WHITE_SKIN;
+                const secondaryColor = isTransformed ? DARK_PURPLE_SKIN : WHITE_SKIN;
+                const secondaryShadow = isTransformed ? DARK_PURPLE_SHADOW : WHITE_SHADOW;
+
+                const gemColor = isTransformed ? mainColor : PURPLE_GEM;
+                const gemHighlight = isTransformed ? mainHighlight : PURPLE_HIGHLIGHT;
+                const gemShadow = isTransformed ? mainShadow : PURPLE_SHADOW;
+
+                const shinColor = gemColor;
+                const shinHighlight = gemHighlight;
+                const forearmColor = gemColor;
+                const forearmHighlight = gemHighlight;
+
                 const tailY = (f % 2 === 0) ? 22 : 23;
-                box(14, tailY, 6, 4, mainColor); box(19, tailY-4, 4, 5, mainColor); box(20, tailY-8, 3, 5, mainColor); box(18, tailY-12, 4, 4, mainColor); if(!isTransformed) { box(18, tailY-12, 2, 2, 0xffcccc); }
-                box(11, 23, 4, 5, mainColor); box(17, 23, 4, 5, mainColor); box(11, 23, 1, 5, shadowColor); box(20, 23, 1, 5, shadowColor); box(11, 28, 4, 1, shadowColor); box(17, 28, 4, 1, shadowColor);
-                if(!isTransformed) { box(11, 29, 4, 3, PURPLE_GEM); box(17, 29, 4, 3, PURPLE_GEM); dot(12, 30, PURPLE_HIGHLIGHT); dot(18, 30, PURPLE_HIGHLIGHT); box(11, 29, 1, 3, PURPLE_SHADOW); box(17, 29, 1, 3, PURPLE_SHADOW); } else { box(11, 29, 4, 3, mainColor); box(17, 29, 4, 3, mainColor); }
-                box(10, 32, 2, 2, secondaryColor); box(12, 32, 2, 2, secondaryColor); box(14, 32, 2, 2, secondaryColor); box(16, 32, 2, 2, secondaryColor); box(18, 32, 2, 2, secondaryColor); box(20, 32, 2, 2, secondaryColor);
-                box(11, 14, 10, 9, mainColor); box(12, 19, 8, 1, shadowColor); box(12, 21, 8, 1, shadowColor);
-                if(!isTransformed) { box(13, 15, 6, 3, PURPLE_GEM); dot(14, 15, PURPLE_HIGHLIGHT); dot(15, 16, PURPLE_HIGHLIGHT); box(13, 17, 6, 1, PURPLE_SHADOW); } else { box(13, 15, 6, 3, mainColor); }
-                box(8, 14, 4, 4, mainColor); if(!isTransformed) box(9, 15, 2, 2, PURPLE_GEM); box(20, 14, 4, 4, mainColor); if(!isTransformed) box(21, 15, 2, 2, PURPLE_GEM);
-                box(8, 18, 3, 5, mainColor); box(21, 18, 3, 5, mainColor); if(!isTransformed) { box(8, 21, 3, 2, PURPLE_GEM); box(21, 21, 3, 2, PURPLE_GEM); } else { box(8, 21, 3, 2, mainColor); box(21, 21, 3, 2, mainColor); } box(8, 23, 3, 3, secondaryColor); box(21, 23, 3, 3, secondaryColor);
-                headBox(12, 6, 8, 7, secondaryColor); if(!isTransformed) { headBox(13, 6, 6, 3, PURPLE_GEM); headDot(14, 6, PURPLE_HIGHLIGHT); headDot(16, 7, PURPLE_HIGHLIGHT); } else { headBox(13, 6, 6, 3, mainColor); }
-                const cheekColor = isTransformed ? 0x3e2723 : 0xaa88aa; headDot(13, 10, cheekColor); headDot(18, 10, cheekColor); headDot(13, 9, 0xff0000); headDot(14, 9, 0xff0000); headDot(17, 9, 0xff0000); headDot(18, 9, 0xff0000); headDot(13, 8, BLACK); headDot(14, 8, BLACK); headDot(17, 8, BLACK); headDot(18, 8, BLACK); const lipColor = 0x663366; headDot(15, 12, lipColor); headDot(16, 12, lipColor);
+                
+                // Tail (drawn first so it's behind the body)
+                box(14, tailY, 6, 3, mainColor);      // Base extending right
+                box(18, tailY - 2, 4, 4, mainColor);  // Curving up
+                box(21, tailY - 6, 3, 5, mainColor);  // Going up
+                box(22, tailY - 11, 2, 6, mainColor); // Curving left slightly at top
+                box(21, tailY - 14, 2, 4, mainColor); // Tip
+                
+                // Tail shadow
+                box(14, tailY + 2, 6, 1, mainShadow);
+                box(18, tailY - 2, 1, 4, mainShadow);
+                box(21, tailY - 6, 1, 5, mainShadow);
+                box(22, tailY - 11, 1, 6, mainShadow);
+                
+                // Legs (Thighs)
+                box(11, 23, 4, 4, secondaryColor); box(17, 23, 4, 4, secondaryColor);
+                box(11, 23, 1, 4, secondaryShadow); box(20, 23, 1, 4, secondaryShadow); // Inner/outer shadow
+                
+                // Shins
+                box(11, 27, 4, 4, shinColor); box(17, 27, 4, 4, shinColor);
+                box(12, 27, 2, 4, shinHighlight); box(18, 27, 2, 4, shinHighlight); // Shiny shins
+                
+                // Feet (3 toes)
+                box(10, 31, 5, 2, secondaryColor); box(17, 31, 5, 2, secondaryColor);
+                // Left foot toes
+                box(10, 32, 1, 1, mainColor); box(12, 32, 1, 1, mainColor); box(14, 32, 1, 1, mainColor);
+                // Right foot toes
+                box(17, 32, 1, 1, mainColor); box(19, 32, 1, 1, mainColor); box(21, 32, 1, 1, mainColor);
+                // Shadows between toes
+                box(11, 32, 1, 1, secondaryShadow); box(13, 32, 1, 1, secondaryShadow);
+                box(18, 32, 1, 1, secondaryShadow); box(20, 32, 1, 1, secondaryShadow);
+                
+                // Torso (Abdomen)
+                box(12, 19, 8, 4, secondaryColor);
+                box(12, 19, 8, 1, secondaryShadow); // Ribbed texture
+                box(12, 21, 8, 1, secondaryShadow); // Ribbed texture
+                
+                // Torso (Chest)
+                box(11, 14, 10, 5, mainColor);
+                box(11, 14, 2, 5, mainShadow); box(19, 14, 2, 5, mainShadow); // Chest sides
+                
+                // Chest Gem
+                box(13, 15, 6, 3, gemColor);
+                box(14, 15, 4, 1, gemHighlight); // Shiny chest
+                
+                // Neck
+                box(13, 12, 6, 2, secondaryColor);
+                box(13, 12, 1, 2, secondaryShadow); box(18, 12, 1, 2, secondaryShadow); // Neck shadow
+                
+                // Shoulders (Spherical)
+                box(7, 13, 5, 4, mainColor);
+                box(8, 14, 3, 2, gemColor);
+                box(8, 14, 2, 1, gemHighlight);
+                dot(8, 14, WHITE); // Specular shine
+                
+                box(20, 13, 5, 4, mainColor);
+                box(21, 14, 3, 2, gemColor);
+                box(22, 14, 2, 1, gemHighlight);
+                dot(22, 14, WHITE); // Specular shine
+                
+                // Arms
+                box(8, 17, 3, 3, secondaryColor); box(21, 17, 3, 3, secondaryColor); // Upper arm
+                box(8, 20, 3, 3, forearmColor); box(21, 20, 3, 3, forearmColor); // Forearm
+                box(9, 20, 1, 3, forearmHighlight); box(22, 20, 1, 3, forearmHighlight); // Forearm shine
+                
+                // Hands
+                box(8, 23, 3, 2, secondaryColor); box(21, 23, 3, 2, secondaryColor);
+                
+                // Head base (Helmet/Sides)
+                headBox(12, 4, 8, 8, mainColor);
+                
+                // Face plate
+                headBox(13, 6, 6, 6, secondaryColor);
+                
+                // Dome
+                headBox(13, 1, 6, 4, gemColor);
+                headBox(14, 2, 4, 2, gemHighlight); // Shiny dome
+                headDot(14, 2, WHITE); // Specular reflection
+                
+                // Eyes & Face details
+                headBox(13, 8, 2, 1, WHITE); headBox(17, 8, 2, 1, WHITE); // Sclera
+                headDot(14, 8, 0xff0000); headDot(17, 8, 0xff0000); // Red pupils
+                
+                // Eyeliner / Brow ridge
+                headDot(13, 7, BLACK); headDot(14, 7, BLACK); headDot(17, 7, BLACK); headDot(18, 7, BLACK);
+                
+                // Cheeks (Lines)
+                const cheekLine = isTransformed ? DARK_PURPLE_SHADOW : PURPLE_GEM;
+                headDot(13, 10, cheekLine); headDot(18, 10, cheekLine);
+                
+                // Lips
+                headBox(15, 11, 2, 1, BLACK);
+                
                 break;
             }
             case 'cell': {
-                const GREEN = 0x66bb66; const BLACK_S = 0x112211; const PALE = 0xeeeeee; const ORANGE = 0xffaa00;
-                const wingW = (f===1 || f===3) ? 5 : 4; 
-                headBox(6, 10, wingW, 14, BLACK_S); headBox(22 + (4-wingW), 10, wingW, 14, BLACK_S);
-                box(10, 23, 4, 6, GREEN); box(18, 23, 4, 6, GREEN); dot(11, 24, BLACK_S); dot(19, 25, BLACK_S); box(10, 29, 4, 3, BLACK_S); box(18, 29, 4, 3, BLACK_S); box(10, 31, 4, 2, ORANGE); box(18, 31, 4, 2, ORANGE);
-                box(11, 14, 10, 4, BLACK_S); box(12, 18, 8, 4, GREEN); box(12, 19, 8, 1, 0x448844); box(12, 21, 8, 1, 0x448844); box(11, 22, 10, 2, BLACK_S);
-                box(7, 14, 4, 3, GREEN); box(21, 14, 4, 3, GREEN); box(8, 17, 3, 5, GREEN); box(21, 17, 3, 5, GREEN); dot(9, 18, BLACK_S); dot(22, 19, BLACK_S); box(8, 21, 3, 2, BLACK_S); box(21, 21, 3, 2, BLACK_S); box(8, 23, 3, 2, PALE); box(21, 23, 3, 2, PALE);
-                headBox(12, 6, 8, 7, GREEN); headBox(11, 2, 2, 7, GREEN); headBox(19, 2, 2, 7, GREEN); headBox(13, 3, 6, 3, GREEN); headBox(13, 9, 6, 4, PALE); headBox(12, 9, 1, 3, 0xaa44cc); headBox(19, 9, 1, 3, 0xaa44cc); headDot(14, 10, 0xff00cc); headDot(17, 10, 0xff00cc);
-                break;
-            }
-            case 'leonardo': {
-                const TURTLE_GREEN = 0x2e8b57; const SHELL_DARK = 0x1a4d2e; const PLASTRON_YELLOW = 0xf4d03f; const MASK_BLUE = 0x3498db; const PAD_BROWN = 0x6e2c00; const STRAP_BROWN = 0x5d4037; const METAL_GREY = 0xbdc3c7;
-                box(8, 12, 16, 14, SHELL_DARK); box(10, 23, 4, 5, TURTLE_GREEN); box(18, 23, 4, 5, TURTLE_GREEN); box(9, 26, 6, 3, PAD_BROWN); box(17, 26, 6, 3, PAD_BROWN); box(10, 29, 4, 3, TURTLE_GREEN); box(18, 29, 4, 3, TURTLE_GREEN); box(10, 31, 2, 2, TURTLE_GREEN); box(12, 31, 2, 2, TURTLE_GREEN); box(18, 31, 2, 2, TURTLE_GREEN); box(20, 31, 2, 2, TURTLE_GREEN);
-                box(10, 13, 12, 10, TURTLE_GREEN); box(11, 14, 10, 9, PLASTRON_YELLOW); box(11, 17, 10, 1, 0xd4ac0d); box(11, 20, 10, 1, 0xd4ac0d); box(15, 14, 1, 9, 0xd4ac0d); box(10, 22, 12, 3, PAD_BROWN); box(14, 22, 4, 3, METAL_GREY); dot(15, 22, MASK_BLUE); dot(15, 23, MASK_BLUE); dot(16, 23, MASK_BLUE); dot(11, 13, STRAP_BROWN); dot(20, 13, STRAP_BROWN); dot(12, 14, STRAP_BROWN); dot(19, 14, STRAP_BROWN);
-                box(7, 14, 4, 4, TURTLE_GREEN); box(21, 14, 4, 4, TURTLE_GREEN); box(7, 17, 4, 2, PAD_BROWN); box(21, 17, 4, 2, PAD_BROWN); box(8, 19, 3, 3, TURTLE_GREEN); box(21, 19, 3, 3, TURTLE_GREEN); box(8, 21, 3, 2, PAD_BROWN); box(21, 21, 3, 2, PAD_BROWN); box(8, 23, 3, 3, TURTLE_GREEN); box(21, 23, 3, 3, TURTLE_GREEN);
-                const kY = (f % 2 === 0) ? 6 : 7; headBox(6, kY, 2, 8, BLACK); headBox(6, kY-1, 2, 1, METAL_GREY); headBox(24, kY, 2, 8, BLACK); headBox(24, kY-1, 2, 1, METAL_GREY);
-                headBox(12, 5, 8, 8, TURTLE_GREEN); headBox(13, 10, 6, 3, 0x27ae60); headDot(16, 11, BLACK); headDot(17, 11, BLACK); headBox(11, 7, 10, 3, MASK_BLUE); headDot(12, 8, WHITE); headDot(13, 8, WHITE); headDot(18, 8, WHITE); headDot(19, 8, WHITE); 
-                const tailX = (f % 2 === 0) ? 20 : 21; headBox(tailX, 7, 2, 2, MASK_BLUE); headDot(tailX+2, 7, MASK_BLUE); headDot(tailX+3, 6, MASK_BLUE); headDot(tailX+2, 9, MASK_BLUE); headDot(tailX+3, 10, MASK_BLUE);
-                break;
-            }
-            case 'frieren': {
-                const DRESS_WHITE = 0xfcfcfc; const GOLD = 0xddbb00; const HAIR = 0xe8e8e8; const STAFF_BROWN = 0x5d4037; const STAFF_RED = 0xcc0000; const COLLAR_BLACK = 0x222222; const WAIST_BROWN = 0x3e2723;
-                const skirtW = (f % 2 === 0) ? 14 : 15;
-                box(9, 23, skirtW, 9, DRESS_WHITE); box(12, 23, 1, 9, GOLD); box(19, 23, 1, 9, GOLD); box(9, 30, 14, 2, GOLD); box(10, 29, 4, 3, COLLAR_BLACK); box(18, 29, 4, 3, COLLAR_BLACK);
-                box(11, 14, 10, 9, DRESS_WHITE); box(13, 13, 6, 3, COLLAR_BLACK); box(14, 16, 1, 6, GOLD); box(17, 16, 1, 6, GOLD); box(11, 22, 10, 1, WAIST_BROWN); box(9, 14, 14, 3, DRESS_WHITE); box(9, 17, 14, 1, GOLD);
-                box(7, 16, 4, 6, DRESS_WHITE); box(21, 16, 4, 6, DRESS_WHITE); dot(8, 22, SKIN); dot(21, 22, SKIN);
-                headBox(12, 6, 8, 7, SKIN); headDot(11, 8, SKIN); headDot(10, 7, SKIN); headDot(20, 8, SKIN); headDot(21, 7, SKIN); headDot(10, 9, 0xff0000); headDot(21, 9, 0xff0000); headDot(13, 9, 0x2ecc71); headDot(14, 9, 0x2ecc71); headDot(17, 9, 0x2ecc71); headDot(18, 9, 0x2ecc71); headDot(16, 11, 0xcc8866);
-                canvas.fillStyle(HAIR, 1); headBox(11, 5, 10, 3, HAIR); headBox(12, 7, 8, 2, HAIR); headBox(8, 8, 3, 12, HAIR); headBox(21, 8, 3, 12, HAIR); headDot(9, 20, HAIR); headDot(22, 20, HAIR);
-                const sY = (f % 2 === 0) ? 4 : 5; const sx = 24; box(sx, sY, 2, 28, STAFF_BROWN); box(sx-4, sY-2, 10, 2, GOLD); box(sx-5, sY-2, 2, 6, GOLD); box(sx+5, sY-2, 2, 6, GOLD); box(sx-3, sY+4, 8, 1, GOLD); box(sx-1, sY, 4, 4, STAFF_RED);
-                break;
-            }
-            case 'optimus': {
-                const MOVIE_RED = 0xa81d1d; const MOVIE_BLUE = 0x0a2647; const CHROME = 0xbdc3c7; const MECHANICS = 0x4a5568; const FLAME = 0xf39c12; const GLASS = 0x3498db; const EYES = 0x00ffff;
-                if (isTransformed) {
-                    const vib = (f % 2); 
-                    box(4, 24, 4, 4, BLACK); box(5, 25, 2, 2, CHROME); box(10, 24, 4, 4, BLACK); box(11, 25, 2, 2, CHROME); box(4, 22+vib, 20, 2, MECHANICS); box(4, 12+vib, 8, 10, MOVIE_BLUE); box(12, 12+vib, 6, 10, MOVIE_RED); box(18, 16+vib, 10, 6, MOVIE_RED); dot(20, 18+vib, FLAME); dot(21, 18+vib, FLAME); dot(22, 19+vib, FLAME); dot(23, 19+vib, FLAME); dot(24, 20+vib, FLAME); dot(25, 20+vib, FLAME); box(13, 13+vib, 4, 3, GLASS); box(28, 16+vib, 2, 6, CHROME); box(22, 24, 4, 4, BLACK); box(23, 25, 2, 2, CHROME); box(10, 4+vib, 2, 10, CHROME);
-                } else {
-                    box(11, 23, 3, 4, MECHANICS); box(18, 23, 3, 4, MECHANICS); box(10, 24, 1, 3, MOVIE_BLUE); box(21, 24, 1, 3, MOVIE_BLUE); box(10, 26, 4, 2, CHROME); box(18, 26, 4, 2, CHROME); box(10, 28, 4, 4, MOVIE_BLUE); box(18, 28, 4, 4, MOVIE_BLUE); dot(11, 28, FLAME); dot(19, 28, FLAME); box(10, 32, 2, 2, CHROME); box(12, 32, 2, 2, MOVIE_BLUE); box(18, 32, 2, 2, MOVIE_BLUE); box(20, 32, 2, 2, CHROME); box(10, 14, 12, 9, MECHANICS); box(13, 19, 6, 4, CHROME);
-                    headBox(10, 14, 5, 4, MOVIE_RED); headDot(11, 15, GLASS); headDot(12, 15, GLASS); headBox(17, 14, 5, 4, MOVIE_RED); headDot(19, 15, GLASS); headDot(20, 15, GLASS); headDot(11, 17, FLAME); headDot(18, 17, FLAME); headBox(7, 13, 4, 4, MOVIE_RED); headBox(21, 13, 4, 4, MOVIE_RED); headDot(8, 15, FLAME); headDot(22, 15, FLAME); headBox(6, 9, 2, 6, CHROME); headBox(24, 9, 2, 6, CHROME); headBox(8, 17, 3, 3, MECHANICS); headBox(21, 17, 3, 3, MECHANICS); headBox(7, 20, 4, 3, MOVIE_RED); headBox(21, 20, 4, 3, MOVIE_RED); headBox(7, 23, 3, 2, MOVIE_BLUE); headBox(22, 23, 3, 2, MOVIE_BLUE); headBox(13, 6, 6, 7, MOVIE_BLUE); headBox(14, 10, 4, 3, CHROME); headDot(14, 8, EYES); headDot(17, 8, EYES); headDot(15, 6, CHROME); headDot(16, 6, CHROME); headBox(12, 5, 1, 3, MOVIE_BLUE); headBox(19, 5, 1, 3, MOVIE_BLUE); 
-                }
+                const GREEN = 0x66bb66; 
+                const DARK_GREEN = 0x448844;
+                const BLACK_S = 0x112211; 
+                const PALE = 0xeeeeee; 
+                const ORANGE = 0xffaa00;
+                const PURPLE = 0xaa44cc;
+                const PINK_EYE = 0xff00cc;
+                
+                // Wings (Beetle-like, drawn first so they are behind)
+                const wingSpread = (f % 2 === 0) ? 0 : 1;
+                // Left wing
+                box(6 - wingSpread, 12, 6, 15, BLACK_S);
+                box(7 - wingSpread, 13, 4, 13, 0x223322); // Wing highlight/texture
+                // Right wing
+                box(20 + wingSpread, 12, 6, 15, BLACK_S);
+                box(21 + wingSpread, 13, 4, 13, 0x223322); // Wing highlight/texture
+                
+                // Legs (Thighs and Calves)
+                box(10, 23, 4, 6, GREEN); box(18, 23, 4, 6, GREEN);
+                // Black spots on legs
+                dot(11, 24, BLACK_S); dot(13, 26, BLACK_S); dot(10, 27, BLACK_S);
+                dot(19, 25, BLACK_S); dot(21, 24, BLACK_S); dot(18, 27, BLACK_S);
+                
+                // Boots
+                box(10, 29, 4, 3, BLACK_S); box(18, 29, 4, 3, BLACK_S); 
+                box(10, 31, 4, 2, ORANGE); box(18, 31, 4, 2, ORANGE);
+                
+                // Torso (Chest and Abdomen)
+                // Black upper chest/neck area
+                box(11, 14, 10, 4, BLACK_S); 
+                // Green abdomen
+                box(12, 18, 8, 4, GREEN); 
+                // Ribbed texture on abdomen
+                box(12, 19, 8, 1, DARK_GREEN); box(12, 21, 8, 1, DARK_GREEN); 
+                // Black pelvis area
+                box(11, 22, 10, 2, BLACK_S);
+                
+                // Arms
+                // Shoulders
+                box(7, 14, 4, 3, GREEN); box(21, 14, 4, 3, GREEN); 
+                // Spots on shoulders
+                dot(8, 15, BLACK_S); dot(22, 15, BLACK_S);
+                
+                // Upper arms
+                box(8, 17, 3, 5, GREEN); box(21, 17, 3, 5, GREEN); 
+                // Spots on arms
+                dot(9, 18, BLACK_S); dot(8, 20, BLACK_S);
+                dot(22, 19, BLACK_S); dot(23, 17, BLACK_S);
+                
+                // Lower arms/Hands
+                box(8, 21, 3, 2, BLACK_S); box(21, 21, 3, 2, BLACK_S); 
+                box(8, 23, 3, 2, PALE); box(21, 23, 3, 2, PALE);
+                
+                // Head
+                // Base face
+                headBox(12, 6, 8, 7, GREEN); 
+                
+                // Crown (Refined shape)
+                headBox(11, 0, 2, 8, GREEN); // Left tall prong
+                headBox(19, 0, 2, 8, GREEN); // Right tall prong
+                headBox(13, 2, 6, 4, GREEN); // Center crown base
+                headBox(14, 1, 4, 2, GREEN); // Center crown peak
+                
+                // Crown spots
+                headDot(11, 2, BLACK_S); headDot(12, 5, BLACK_S);
+                headDot(20, 3, BLACK_S); headDot(19, 6, BLACK_S);
+                headDot(15, 3, BLACK_S); headDot(16, 4, BLACK_S);
+                
+                // Pale face plate
+                headBox(13, 8, 6, 5, PALE); 
+                
+                // Purple cheek lines
+                headBox(12, 9, 1, 3, PURPLE); headBox(19, 9, 1, 3, PURPLE); 
+                
+                // Eyes
+                headBox(13, 9, 2, 1, WHITE); headBox(17, 9, 2, 1, WHITE);
+                headDot(14, 9, PINK_EYE); headDot(17, 9, PINK_EYE);
+                
+                // Mouth
+                headBox(15, 12, 2, 1, BLACK_S);
+                
                 break;
             }
             case 'minipekka': {
@@ -472,10 +795,386 @@ export default class PreloadScene extends Phaser.Scene {
                 headBox(11, 10+offY, 10, 3, METAL_LIGHT); headBox(11, 6+offY, 10, 4, METAL_LIGHT); headBox(11, 9+offY, 10, 2, 0x000000); headBox(14, 9+offY, 4, 2, EYE); headBox(9, 5+offY, 2, 4, ACCENT); headBox(21, 5+offY, 2, 4, ACCENT); headDot(9, 4+offY, ACCENT); headDot(21, 4+offY, ACCENT);
                 break;
             }
+            case 'cyberninja': {
+                const SUIT_MAIN = isTransformed ? 0x222222 : 0x2d3436; // Darker when transformed
+                const SUIT_DARK = 0x111111;
+                const SCARF = isTransformed ? 0xff0055 : 0x00d2d3; // Red vs Cyan
+                const VISOR = isTransformed ? 0xff0000 : 0x00eaff;
+                const SKIN_PALE = 0xffeebb;
+                
+                // Legs (Baggy ninja pants)
+                box(10, 24, 4, 6, SUIT_MAIN); box(18, 24, 4, 6, SUIT_MAIN);
+                box(10, 30, 4, 2, SUIT_DARK); box(18, 30, 4, 2, SUIT_DARK); // Boots
+                
+                // Torso (Armor vest)
+                box(11, 14, 10, 10, SUIT_MAIN);
+                box(12, 15, 8, 5, SUIT_DARK); // Chest plate
+                
+                // Arms
+                box(8, 14, 3, 5, SUIT_MAIN); box(21, 14, 3, 5, SUIT_MAIN);
+                box(8, 19, 3, 4, SKIN_PALE); box(21, 19, 3, 4, SKIN_PALE); // Bare arms/gloves
+                box(8, 21, 3, 2, SUIT_DARK); box(21, 21, 3, 2, SUIT_DARK); // Gloves
+                
+                // Head
+                headBox(12, 6, 8, 8, SUIT_MAIN); // Hood
+                headBox(13, 8, 6, 3, SKIN_PALE); // Face opening
+                headBox(13, 8, 6, 1, VISOR); // Visor eye
+                
+                // Scarf Animation (Flowing in wind)
+                // Base position neck
+                headBox(11, 13, 10, 2, SCARF); 
+                
+                // Tail of scarf
+                let scarfLen = 0;
+                let scarfY = 0;
+                
+                if (f === 0) { scarfLen = 8; scarfY = 13; }
+                else if (f === 1) { scarfLen = 10; scarfY = 12; }
+                else if (f === 2) { scarfLen = 12; scarfY = 14; }
+                else if (f === 3) { scarfLen = 10; scarfY = 13; }
+                
+                // Draw scarf tail to the left (wind blowing right to left conceptually, or just flow)
+                // Let's draw it flowing behind (left side of sprite)
+                // Ensure it doesn't go below x=0 to avoid bleeding into previous frame
+                const scarfStartX = Math.max(0, 11 - scarfLen);
+                const actualScarfLen = 11 - scarfStartX;
+                if (actualScarfLen > 0) {
+                    headBox(scarfStartX, scarfY, actualScarfLen, 3, SCARF);
+                }
+                
+                // Katana Handle on back (left side since facing right)
+                headBox(9, 4, 2, 6, 0x555555);
+                break;
+            }
+            case 'leonardo': {
+                const GREEN = 0x2ecc71;
+                const GREEN_SHADOW = 0x27ae60;
+                const SHELL_FRONT = 0xf1c40f;
+                const SHELL_BACK = 0x1e8449;
+                const BANDANA = 0x3498db;
+                const BELT = 0x5c4033;
+                const PAD = 0x5c4033;
+                const STEEL = 0xbdc3c7;
+                
+                // Legs
+                box(10, 24, 4, 6, GREEN); box(18, 24, 4, 6, GREEN);
+                box(10, 27, 4, 2, PAD); box(18, 27, 4, 2, PAD); // Knee pads
+                // Torso
+                box(11, 14, 10, 10, GREEN);
+                box(12, 15, 8, 8, SHELL_FRONT); // Front shell
+                box(14, 15, 4, 8, 0xe6b800); // Shell detail
+                box(11, 21, 10, 2, BELT); // Belt
+                dot(15, 21, 0xaaaaaa); dot(16, 21, 0xaaaaaa); // Belt buckle
+                // Arms
+                box(8, 14, 3, 8, GREEN); box(21, 14, 3, 8, GREEN);
+                box(8, 18, 3, 2, PAD); box(21, 18, 3, 2, PAD); // Elbow pads
+                box(8, 21, 3, 2, PAD); box(21, 21, 3, 2, PAD); // Wrist wraps
+                // Katanas on back
+                box(9, 12, 2, 10, STEEL); box(21, 12, 2, 10, STEEL); // Blades crossing
+                // Head
+                headBox(12, 6, 8, 8, GREEN);
+                headBox(11, 9, 10, 2, BANDANA); // Bandana
+                headBox(10, 10, 2, 4, BANDANA); // Bandana knot tail
+                headDot(13, 9, WHITE); headDot(17, 9, WHITE); // Eyes
+                break;
+            }
+            case 'frieren': {
+                const HAIR = 0xecf0f1;
+                const HAIR_SHADOW = 0xbdc3c7;
+                const COAT = 0xffffff;
+                const COAT_SHADOW = 0xe0e0e0;
+                const SCARF = 0x2c3e50; // Dark blue/black collar
+                const GOLD = 0xf1c40f;
+                const SKIN = 0xffeebb;
+                const TIGHTS = 0x111111;
+                const BOOTS = 0x8b4513;
+                
+                // Legs
+                box(12, 24, 3, 6, TIGHTS); box(17, 24, 3, 6, TIGHTS);
+                box(11, 28, 4, 3, BOOTS); box(17, 28, 4, 3, BOOTS);
+                // Torso
+                box(11, 14, 10, 10, COAT);
+                box(11, 14, 10, 3, SCARF); // Collar
+                box(15, 14, 2, 10, GOLD); // Center trim
+                box(11, 22, 10, 2, 0x222222); // Belt
+                // Arms
+                box(8, 14, 3, 8, COAT); box(21, 14, 3, 8, COAT);
+                box(8, 20, 3, 2, TIGHTS); box(21, 20, 3, 2, TIGHTS); // Gloves/cuffs
+                // Staff
+                box(23, 10, 2, 20, 0x8b4513); // Staff pole
+                box(22, 8, 4, 3, GOLD); // Staff top
+                dot(23, 7, 0xe74c3c); // Red gem
+                // Head
+                headBox(12, 6, 8, 8, SKIN);
+                headBox(11, 4, 10, 4, HAIR); // Hair top
+                headBox(13, 4, 6, 1, HAIR_SHADOW);
+                // Twintails
+                headBox(9, 6, 3, 12, HAIR); headBox(20, 6, 3, 12, HAIR); 
+                headBox(10, 18, 2, 2, 0xcc0000); headBox(20, 18, 2, 2, 0xcc0000); // Red hair ties
+                // Elf Ears
+                headBox(8, 9, 4, 2, SKIN); headBox(20, 9, 4, 2, SKIN);
+                // Face
+                headDot(14, 9, 0x27ae60); headDot(17, 9, 0x27ae60); // Eyes
+                headDot(13, 8, HAIR_SHADOW); headDot(18, 8, HAIR_SHADOW); // Eyebrows
+                break;
+            }
+            case 'optimus': {
+                const RED = 0xe74c3c;
+                const RED_SHADOW = 0xc0392b;
+                const BLUE = 0x2980b9;
+                const BLUE_SHADOW = 0x1f618d;
+                const SILVER = 0xbdc3c7;
+                const DARK_METAL = 0x7f8c8d;
+                const YELLOW = 0xf1c40f;
+                const WINDOW = 0x87ceeb;
+                const TIRE = 0x111111;
+                
+                if (isTransformed) {
+                    // TRUCK MODE REMASTER
+                    // Tires (more rounded)
+                    box(6, 24, 4, 8, TIRE); box(22, 24, 4, 8, TIRE); // Front
+                    box(6, 16, 4, 8, TIRE); box(22, 16, 4, 8, TIRE); // Back
+                    box(7, 25, 2, 6, DARK_METAL); box(23, 25, 2, 6, DARK_METAL); // Hubcaps
+                    box(7, 17, 2, 6, DARK_METAL); box(23, 17, 2, 6, DARK_METAL); // Hubcaps
+                    
+                    // Trailer connection / back legs area (Blue)
+                    box(10, 18, 12, 10, BLUE);
+                    box(11, 19, 10, 8, BLUE_SHADOW);
+                    
+                    // Main Cab (Red)
+                    box(8, 8, 16, 14, RED);
+                    box(9, 9, 14, 12, RED_SHADOW);
+                    box(10, 10, 12, 10, RED);
+                    
+                    // Windshield (split and angled)
+                    box(9, 10, 6, 5, WINDOW); box(17, 10, 6, 5, WINDOW);
+                    box(10, 11, 4, 3, 0xffffff); box(18, 11, 4, 3, 0xffffff); // Glint
+                    
+                    // Grill (detailed)
+                    box(13, 15, 6, 10, SILVER);
+                    box(14, 16, 1, 8, DARK_METAL); box(17, 16, 1, 8, DARK_METAL);
+                    
+                    // Bumper
+                    box(7, 25, 18, 4, SILVER);
+                    box(8, 26, 16, 2, DARK_METAL);
+                    
+                    // Headlights
+                    box(8, 25, 3, 3, YELLOW); box(21, 25, 3, 3, YELLOW);
+                    dot(9, 26, 0xffffff); dot(22, 26, 0xffffff);
+                    
+                    // Smokestacks
+                    box(5, 2, 2, 12, SILVER); box(25, 2, 2, 12, SILVER);
+                    box(6, 2, 1, 12, 0xffffff); box(26, 2, 1, 12, 0xffffff); // Highlight
+                    
+                    // Top lights
+                    box(10, 7, 12, 2, SILVER);
+                    dot(11, 7, YELLOW); dot(15, 7, YELLOW); dot(16, 7, YELLOW); dot(20, 7, YELLOW);
+                } else {
+                    // ROBOT MODE REMASTER
+                    // Legs (Blue with silver thighs)
+                    box(10, 24, 5, 8, BLUE); box(17, 24, 5, 8, BLUE);
+                    box(11, 24, 3, 7, BLUE_SHADOW); box(18, 24, 3, 7, BLUE_SHADOW); // Leg shading
+                    box(11, 22, 3, 3, SILVER); box(18, 22, 3, 3, SILVER); // Thighs
+                    box(10, 30, 5, 2, BLUE_SHADOW); box(17, 30, 5, 2, BLUE_SHADOW); // Feet
+                    
+                    // Torso (Red cab)
+                    box(9, 12, 14, 10, RED);
+                    box(10, 13, 12, 8, RED_SHADOW);
+                    box(11, 14, 10, 6, RED);
+                    
+                    // Windshield Windows (Chest)
+                    box(10, 13, 5, 5, WINDOW); box(17, 13, 5, 5, WINDOW);
+                    box(11, 14, 3, 2, 0xffffff); box(18, 14, 3, 2, 0xffffff); // Glint
+                    
+                    // Center grill (Abdomen)
+                    box(13, 18, 6, 4, SILVER); 
+                    box(14, 18, 1, 4, DARK_METAL); box(17, 18, 1, 4, DARK_METAL);
+                    
+                    // Waist/Bumper
+                    box(10, 21, 12, 3, SILVER); 
+                    box(11, 21, 2, 2, YELLOW); box(19, 21, 2, 2, YELLOW); // Headlights
+                    
+                    // Arms
+                    box(5, 12, 4, 8, RED); box(23, 12, 4, 8, RED);
+                    box(4, 11, 6, 4, RED_SHADOW); box(22, 11, 6, 4, RED_SHADOW); // Shoulders
+                    box(5, 18, 4, 5, BLUE); box(23, 18, 4, 5, BLUE); // Forearms
+                    box(6, 18, 2, 5, BLUE_SHADOW); box(24, 18, 2, 5, BLUE_SHADOW); // Forearm shading
+                    box(5, 22, 4, 2, BLUE_SHADOW); box(23, 22, 4, 2, BLUE_SHADOW); // Hands
+                    
+                    // Smokestacks (Shoulders)
+                    box(4, 5, 2, 7, SILVER); box(26, 5, 2, 7, SILVER);
+                    
+                    // Head
+                    headBox(13, 5, 6, 7, BLUE);
+                    headBox(14, 5, 4, 2, SILVER); // Crest
+                    headBox(12, 6, 1, 4, BLUE); headBox(19, 6, 1, 4, BLUE); // Antennae
+                    headBox(14, 8, 4, 4, SILVER); // Faceplate
+                    headBox(15, 9, 2, 3, DARK_METAL); // Mouthplate detail
+                    headDot(14, 7, 0x00ffff); headDot(17, 7, 0x00ffff); // Eyes
+                }
+                break;
+            }
+            case 'naruto': {
+                const SKIN = 0xffccaa;
+                const ORANGE = 0xff8800;
+                const BLACK = 0x111111;
+                const BLUE = 0x2244aa;
+                const YELLOW_HAIR = 0xffdd00;
+                
+                const K_ORANGE = 0xffaa00; // Kurama mode base
+                const K_YELLOW = 0xffff00; // Kurama mode glow
+                const K_BLACK = 0x000000; // Markings
+                
+                if (isTransformed) {
+                    // Kurama Link Mode / Six Paths Aura
+                    canvas.fillStyle(K_ORANGE, 0.4);
+                    canvas.fillRect((offsetX + 4) * SCALE, (breatheOffset - 10 + DRAW_OFFSET_Y) * SCALE, 24 * SCALE, 42 * SCALE);
+                    canvas.fillStyle(K_YELLOW, 0.6);
+                    canvas.fillRect((offsetX + 6) * SCALE, (breatheOffset - 6 + DRAW_OFFSET_Y) * SCALE, 20 * SCALE, 38 * SCALE);
+                    
+                    // Truth-Seeking Orbs (floating behind)
+                    const orbY = breatheOffset - 4 + Math.sin(f * Math.PI) * 2;
+                    box(4, orbY, 4, 4, K_BLACK);
+                    box(24, orbY + 4, 4, 4, K_BLACK);
+                    box(6, orbY + 12, 4, 4, K_BLACK);
+                    box(22, orbY + 16, 4, 4, K_BLACK);
+                }
+
+                const suitColor = isTransformed ? K_ORANGE : ORANGE;
+                const detailColor = isTransformed ? K_BLACK : BLACK;
+                const skinColor = isTransformed ? K_YELLOW : SKIN;
+                const hairColor = isTransformed ? K_YELLOW : YELLOW_HAIR;
+                
+                // Legs
+                box(10, 24, 4, 6, suitColor); box(18, 24, 4, 6, suitColor);
+                // Shoes/Sandals
+                box(10, 30, 4, 2, detailColor); box(18, 30, 4, 2, detailColor);
+                if (!isTransformed) {
+                    // Bandages on right leg
+                    box(10, 26, 4, 2, 0xeeeeee);
+                    // Holster on right leg
+                    box(13, 25, 2, 3, BLACK);
+                }
+                
+                // Torso
+                box(11, 14, 10, 10, suitColor);
+                if (isTransformed) {
+                    // Magatama markings on chest
+                    box(13, 16, 2, 2, K_BLACK); box(17, 16, 2, 2, K_BLACK);
+                    box(15, 18, 2, 2, K_BLACK);
+                    // Center line
+                    box(15, 20, 2, 4, K_BLACK);
+                } else {
+                    // Jacket zipper/black details
+                    box(15, 14, 2, 10, BLACK);
+                    box(11, 14, 10, 3, BLACK); // Shoulders
+                    // Orange collar
+                    box(11, 13, 10, 2, ORANGE);
+                    // White swirl on left arm
+                    box(21, 16, 2, 2, 0xeeeeee);
+                }
+                
+                // Arms
+                box(8, 14, 3, 6, suitColor); box(21, 14, 3, 6, suitColor);
+                box(8, 20, 3, 3, skinColor); box(21, 20, 3, 3, skinColor); // Hands
+                
+                // Head
+                headBox(12, 6, 8, 7, skinColor);
+                
+                // Headband
+                if (isTransformed) {
+                    headBox(11, 5, 10, 2, suitColor);
+                    headBox(13, 5, 6, 2, K_BLACK); // Plate
+                } else {
+                    headBox(11, 5, 10, 2, BLUE); // Blue headband
+                    headBox(13, 5, 6, 2, 0xaaaaaa); // Metal plate
+                }
+                
+                // Eyes
+                if (isTransformed) {
+                    headBox(13, 8, 2, 2, K_ORANGE); headBox(17, 8, 2, 2, K_ORANGE);
+                    headDot(13, 8, K_BLACK); headDot(17, 8, K_BLACK); // Cross/slit pupils
+                } else {
+                    headBox(13, 8, 2, 2, WHITE); headBox(17, 8, 2, 2, WHITE);
+                    headDot(14, 8, BLUE); headDot(17, 8, BLUE);
+                }
+                
+                // Whisker marks
+                const whiskerColor = isTransformed ? K_BLACK : 0x884422;
+                headBox(12, 10, 2, 1, whiskerColor); headBox(12, 12, 2, 1, whiskerColor);
+                headBox(18, 10, 2, 1, whiskerColor); headBox(18, 12, 2, 1, whiskerColor);
+                
+                // Spiky Hair
+                if (isTransformed) {
+                    // Even more massive spiky hair
+                    headBox(10, 0, 12, 5, hairColor);
+                    headBox(12, -4, 3, 4, hairColor); headBox(17, -4, 3, 4, hairColor);
+                    headBox(14, -6, 4, 6, hairColor);
+                    headBox(8, 2, 3, 4, hairColor); headBox(21, 2, 3, 4, hairColor);
+                    // Horn-like chakra spikes
+                    headBox(10, -8, 2, 6, hairColor); headBox(20, -8, 2, 6, hairColor);
+                } else {
+                    headBox(11, 2, 10, 3, hairColor);
+                    headBox(12, -1, 3, 3, hairColor); headBox(17, -1, 3, 3, hairColor);
+                    headBox(14, -3, 4, 5, hairColor);
+                    headBox(9, 3, 3, 3, hairColor); headBox(20, 3, 3, 3, hairColor);
+                    // Sideburns
+                    headBox(11, 5, 1, 3, hairColor); headBox(20, 5, 1, 3, hairColor);
+                }
+                break;
+            }
+            case 'chapolim': {
+                const RED = 0xe74c3c;
+                const RED_SHADOW = 0xc0392b;
+                const YELLOW = 0xf1c40f;
+                const SKIN = 0xffce9e;
+                const BLACK = 0x111111;
+                
+                // Legs (Red tights, yellow shorts, yellow shoes)
+                box(11, 24, 4, 6, RED); box(17, 24, 4, 6, RED);
+                box(10, 22, 12, 4, YELLOW); // Shorts
+                box(11, 28, 4, 3, YELLOW); box(17, 28, 4, 3, YELLOW); // Shoes
+                box(11, 30, 4, 1, BLACK); box(17, 30, 4, 1, BLACK); // Soles
+                
+                // Torso (Red suit with yellow heart)
+                box(10, 14, 12, 10, RED);
+                box(11, 14, 10, 10, RED_SHADOW);
+                // Yellow Heart (approximate)
+                box(13, 16, 6, 5, YELLOW);
+                box(12, 16, 8, 2, YELLOW);
+                box(14, 21, 4, 1, YELLOW);
+                // "CH" in red (just two dots for scale)
+                dot(14, 17, RED); dot(17, 17, RED);
+                
+                // Arms (Red sleeves, skin hands)
+                box(7, 14, 3, 7, RED); box(22, 14, 3, 7, RED);
+                box(7, 21, 3, 2, SKIN); box(22, 21, 3, 2, SKIN); // Hands
+                
+                // Head (Red hood, skin face)
+                headBox(11, 5, 10, 9, RED); // Hood
+                headBox(12, 7, 8, 6, SKIN); // Face
+                headDot(14, 9, BLACK); headDot(17, 9, BLACK); // Eyes
+                
+                // Antennas (Vinil)
+                headBox(12, 2, 1, 4, RED); headBox(19, 2, 1, 4, RED);
+                headBox(11, 1, 3, 2, YELLOW); headBox(18, 1, 3, 2, YELLOW); // Tips
+                
+                // Chipote Chillón (Mallet) in hand (frame 0 and 2 slightly different)
+                const malletY = (f % 2 === 0) ? 14 : 15;
+                // Handle
+                box(23, malletY - 2, 2, 12, YELLOW);
+                // Head (Red with yellow sides)
+                box(21, malletY - 6, 6, 8, RED);
+                box(20, malletY - 4, 8, 4, YELLOW);
+                break;
+            }
         }
     } // End Loop
 
-    const textureName = isTransformed ? `${key}_ssj` : key;
+    let textureName = key;
+    if (isUI) textureName = `${key}_ui`;
+    else if (isTransformed) textureName = `${key}_ssj`;
+
     canvas.generateTexture(textureName, sheetWidth, sheetHeight);
     
     // Manually add frame data to the new texture so Phaser knows it's a spritesheet
@@ -484,7 +1183,7 @@ export default class PreloadScene extends Phaser.Scene {
         const fw = FRAME_WIDTH * SCALE;
         const fh = FRAME_HEIGHT * SCALE;
         for(let i=0; i<FRAMES; i++) {
-            tex.add(i, 0, i * fw, 0, fw, fh);
+            tex.add(i.toString(), 0, i * fw, 0, fw, fh);
         }
     }
     

@@ -284,15 +284,20 @@ export default class StoreScene extends Phaser.Scene {
         
         const container = this.add.container(x, y);
         const bg = this.add.rectangle(0, 0, 280, 140, 0x1a2b45).setStrokeStyle(3, 0x3a4866);
-        const sprite = this.add.sprite(-80, 10, char.key).setScale(2);
-        const name = this.add.text(40, -30, char.name.toUpperCase(), { fontSize: '24px', fontStyle: 'bold', fontFamily: 'Arial Black' }).setOrigin(0.5);
         
-        const special = this.add.text(40, -5, `Special: ${char.specialName}`, { fontSize: '12px', color: '#aaa', fontStyle: 'italic' }).setOrigin(0.5);
+        // Fix: Position at -70 to offset the bottom-heavy sprite drawing
+        // Use frame 0 explicitly to ensure correct render
+        const sprite = this.add.sprite(-80, -70, char.key, 0).setScale(2);
+        
+        const name = this.add.text(40, -35, char.name.toUpperCase(), { fontSize: '24px', fontStyle: 'bold', fontFamily: 'Arial Black' }).setOrigin(0.5);
+        
+        const special = this.add.text(40, -10, `50%: ${char.specialName}`, { fontSize: '12px', color: '#aaa', fontStyle: 'italic' }).setOrigin(0.5);
+        const superAttack = this.add.text(40, 5, `100%: ${char.superName}`, { fontSize: '12px', color: '#ffd700', fontStyle: 'italic' }).setOrigin(0.5);
 
-        container.add([bg, sprite, name, special]);
+        container.add([bg, sprite, name, special, superAttack]);
 
         if (char.unlocked) {
-            const status = this.add.text(40, 25, 'OWNED', { fontSize: '20px', color: '#00ff00', fontStyle: 'bold' }).setOrigin(0.5);
+            const status = this.add.text(40, 30, 'OWNED', { fontSize: '20px', color: '#00ff00', fontStyle: 'bold' }).setOrigin(0.5);
             container.add(status);
         } else {
             const btnBg = this.add.rectangle(40, 30, 140, 40, 0xd35400);
