@@ -300,7 +300,7 @@ export default class BattleScene extends Phaser.Scene {
       };
       createAnim(`${key}_idle`, key);
       createAnim(`${key}_ssj_idle`, `${key}_ssj`);
-      if (key === 'goku' || key === 'vegeta') {
+      if (key === 'goku' || key === 'vegeta' || key === 'naruto') {
           createAnim(`${key}_ui_idle`, `${key}_ui`);
       }
   }
@@ -524,7 +524,7 @@ export default class BattleScene extends Phaser.Scene {
 
       // Check max transformation level
       let maxLevel = 1;
-      if (data.key === 'goku' || data.key === 'vegeta') maxLevel = 2; // Goku and Vegeta have 2 transformations
+      if (data.key === 'goku' || data.key === 'vegeta' || data.key === 'naruto') maxLevel = 2; // Goku, Vegeta, Naruto have 2 transformations
 
       if(!data.transformAvailable || currentLevel >= maxLevel || ki < 100) return;
 
@@ -536,6 +536,8 @@ export default class BattleScene extends Phaser.Scene {
       
       const isUI = data.key === 'goku' && nextLevel === 2;
       const isUE = data.key === 'vegeta' && nextLevel === 2;
+      const isSageMode = data.key === 'naruto' && nextLevel === 1;
+      const isKuramaMode = data.key === 'naruto' && nextLevel === 2;
       
       let auraColor = 0xffd700;
       let ringColor = 0xffff00;
@@ -577,9 +579,13 @@ export default class BattleScene extends Phaser.Scene {
           auraColor = 0x00eaff; // Cyan
           ringColor = 0x0088ff; // Blue
           transformText = "OVERDRIVE!";
-      } else if (data.key === 'naruto') {
-          auraColor = 0xffaa00; // Orange
-          ringColor = 0xffff00; // Yellow
+      } else if (isSageMode) {
+          auraColor = 0xffaa00; // Orange/Yellow
+          ringColor = 0xff4400; // Reddish orange
+          transformText = "SAGE MODE!";
+      } else if (isKuramaMode) {
+          auraColor = 0xffff00; // Bright Yellow
+          ringColor = 0xffaa00; // Orange
           transformText = "KURAMA LINK MODE!";
       }
 
@@ -595,7 +601,7 @@ export default class BattleScene extends Phaser.Scene {
               if (!this.scene.isActive()) return;
               
               let texKey = `${data.key}_ssj`;
-              if (isUI || isUE) texKey = `${data.key}_ui`;
+              if (isUI || isUE || isKuramaMode) texKey = `${data.key}_ui`;
 
               if(this.textures.exists(texKey)) {
                   sprite.setTexture(texKey);
@@ -1959,9 +1965,21 @@ export default class BattleScene extends Phaser.Scene {
       const transLevel = isP ? this.playerTransformLevel : this.enemyTransformLevel;
       const baseDmg = isS ? 60 : 35;
       const dmg = Math.floor(baseDmg * this.getDamageMultiplier(transLevel));
-      const color = 0x3498db; // Blue Rasengan
       
-      this.log("RASENGAN!");
+      let color = 0x3498db; // Blue Rasengan
+      let scaleTarget = 10;
+      let attackName = "RASENGAN!";
+      
+      if (transLevel === 1) {
+          scaleTarget = 15; // Oodama Rasengan (Bigger)
+          attackName = "OODAMA RASENGAN!";
+      } else if (transLevel === 2) {
+          color = 0xffaa00; // Tailed Beast Rasengan (Orange)
+          scaleTarget = 18;
+          attackName = "TAILED BEAST RASENGAN!";
+      }
+      
+      this.log(attackName);
       if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack', { rate: 1.5 });
 
       // Create Rasengan in hand
@@ -1972,7 +1990,7 @@ export default class BattleScene extends Phaser.Scene {
       // 1. Charge effect (standing still)
       this.tweens.add({
           targets: [rasengan, rasenganCore],
-          scale: 10,
+          scale: scaleTarget,
           duration: 400,
           ease: 'Sine.easeOut',
           onUpdate: () => {
@@ -2044,9 +2062,21 @@ export default class BattleScene extends Phaser.Scene {
       const target = isP ? this.enemy : this.player;
       const transLevel = isP ? this.playerTransformLevel : this.enemyTransformLevel;
       const dmg = Math.floor(120 * this.getDamageMultiplier(transLevel));
-      const color = 0x3498db; // Blue/White
       
-      this.log("RASENSHURIKEN!");
+      let color = 0x3498db; // Blue/White
+      let attackName = "RASENSHURIKEN!";
+      let scaleTarget = 1.5;
+      
+      if (transLevel === 1) {
+          attackName = "SENPOU: RASENSHURIKEN!";
+          scaleTarget = 2.0;
+      } else if (transLevel === 2) {
+          color = 0xffaa00; // Orange/Yellow
+          attackName = "BIJUU RASENSHURIKEN!";
+          scaleTarget = 2.5;
+      }
+      
+      this.log(attackName);
       if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam');
 
       // Raise hand
@@ -2079,7 +2109,7 @@ export default class BattleScene extends Phaser.Scene {
       this.tweens.add({
           targets: shuriken,
           rotation: Math.PI * 4,
-          scale: 1.5,
+          scale: scaleTarget,
           duration: 800,
           onComplete: () => {
               if(!this.scene.isActive()) return;
@@ -2234,7 +2264,7 @@ export default class BattleScene extends Phaser.Scene {
       
       // 1. Transform if available and have enough Ki
       let maxLevel = 1;
-      if (this.enemyData.key === 'goku' || this.enemyData.key === 'vegeta') maxLevel = 2;
+      if (this.enemyData.key === 'goku' || this.enemyData.key === 'vegeta' || this.enemyData.key === 'naruto') maxLevel = 2;
 
       if (this.enemyKi >= 100 && this.enemyTransformLevel < maxLevel && this.enemyData.transformAvailable) {
           this.performTransform(false);

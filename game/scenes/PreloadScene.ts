@@ -79,8 +79,8 @@ export default class PreloadScene extends Phaser.Scene {
         }
         this.generateLSWSprite(c.key, 1);
         
-        // Add UI/UE transformation for Goku and Vegeta
-        if (c.key === 'goku' || c.key === 'vegeta') {
+        // Add UI/UE/Final transformation for Goku, Vegeta, and Naruto
+        if (c.key === 'goku' || c.key === 'vegeta' || c.key === 'naruto') {
             const keyUI = `${c.key}_ui`;
             if (this.textures.exists(keyUI)) {
                 this.textures.remove(keyUI);
@@ -1020,12 +1020,16 @@ export default class PreloadScene extends Phaser.Scene {
                 const BLACK = 0x111111;
                 const BLUE = 0x2244aa;
                 const YELLOW_HAIR = 0xffdd00;
+                const RED_COAT = 0xcc0000;
                 
                 const K_ORANGE = 0xffaa00; // Kurama mode base
                 const K_YELLOW = 0xffff00; // Kurama mode glow
                 const K_BLACK = 0x000000; // Markings
                 
-                if (isTransformed) {
+                const isSageMode = form === 1;
+                const isKuramaMode = form === 2;
+                
+                if (isKuramaMode) {
                     // Kurama Link Mode / Six Paths Aura
                     canvas.fillStyle(K_ORANGE, 0.4);
                     canvas.fillRect((offsetX + 4) * SCALE, (breatheOffset - 10 + DRAW_OFFSET_Y) * SCALE, 24 * SCALE, 42 * SCALE);
@@ -1040,16 +1044,24 @@ export default class PreloadScene extends Phaser.Scene {
                     box(22, orbY + 16, 4, 4, K_BLACK);
                 }
 
-                const suitColor = isTransformed ? K_ORANGE : ORANGE;
-                const detailColor = isTransformed ? K_BLACK : BLACK;
-                const skinColor = isTransformed ? K_YELLOW : SKIN;
-                const hairColor = isTransformed ? K_YELLOW : YELLOW_HAIR;
+                const suitColor = isKuramaMode ? K_ORANGE : ORANGE;
+                const detailColor = isKuramaMode ? K_BLACK : BLACK;
+                const skinColor = isKuramaMode ? K_YELLOW : SKIN;
+                const hairColor = isKuramaMode ? K_YELLOW : YELLOW_HAIR;
+                const SAGE_ORANGE = 0xff4400;
                 
+                // Scroll on back (drawn before torso so it's behind)
+                if (isSageMode) {
+                    box(8, 15, 16, 8, 0xdddddd); // Scroll base
+                    box(7, 16, 18, 6, 0x880000); // Scroll ends
+                    box(10, 15, 12, 8, 0xeeeeee); // Scroll inner
+                }
+
                 // Legs
                 box(10, 24, 4, 6, suitColor); box(18, 24, 4, 6, suitColor);
                 // Shoes/Sandals
                 box(10, 30, 4, 2, detailColor); box(18, 30, 4, 2, detailColor);
-                if (!isTransformed) {
+                if (!isKuramaMode) {
                     // Bandages on right leg
                     box(10, 26, 4, 2, 0xeeeeee);
                     // Holster on right leg
@@ -1058,7 +1070,7 @@ export default class PreloadScene extends Phaser.Scene {
                 
                 // Torso
                 box(11, 14, 10, 10, suitColor);
-                if (isTransformed) {
+                if (isKuramaMode) {
                     // Magatama markings on chest
                     box(13, 16, 2, 2, K_BLACK); box(17, 16, 2, 2, K_BLACK);
                     box(15, 18, 2, 2, K_BLACK);
@@ -1072,17 +1084,32 @@ export default class PreloadScene extends Phaser.Scene {
                     box(11, 13, 10, 2, ORANGE);
                     // White swirl on left arm
                     box(21, 16, 2, 2, 0xeeeeee);
+                    
+                    if (isSageMode) {
+                        // Red Coat (Open in the front)
+                        // Left side
+                        box(9, 14, 4, 12, RED_COAT);
+                        box(9, 24, 4, 2, BLACK); // Flames
+                        // Right side
+                        box(19, 14, 4, 12, RED_COAT);
+                        box(19, 24, 4, 2, BLACK); // Flames
+                    }
                 }
                 
                 // Arms
-                box(8, 14, 3, 6, suitColor); box(21, 14, 3, 6, suitColor);
-                box(8, 20, 3, 3, skinColor); box(21, 20, 3, 3, skinColor); // Hands
+                if (isSageMode) {
+                    box(6, 14, 4, 6, RED_COAT); box(22, 14, 4, 6, RED_COAT); // Coat sleeves
+                    box(7, 20, 3, 3, skinColor); box(22, 20, 3, 3, skinColor); // Hands
+                } else {
+                    box(8, 14, 3, 6, suitColor); box(21, 14, 3, 6, suitColor);
+                    box(8, 20, 3, 3, skinColor); box(21, 20, 3, 3, skinColor); // Hands
+                }
                 
                 // Head
                 headBox(12, 6, 8, 7, skinColor);
                 
                 // Headband
-                if (isTransformed) {
+                if (isKuramaMode) {
                     headBox(11, 5, 10, 2, suitColor);
                     headBox(13, 5, 6, 2, K_BLACK); // Plate
                 } else {
@@ -1091,21 +1118,34 @@ export default class PreloadScene extends Phaser.Scene {
                 }
                 
                 // Eyes
-                if (isTransformed) {
+                if (isKuramaMode) {
                     headBox(13, 8, 2, 2, K_ORANGE); headBox(17, 8, 2, 2, K_ORANGE);
                     headDot(13, 8, K_BLACK); headDot(17, 8, K_BLACK); // Cross/slit pupils
+                } else if (isSageMode) {
+                    // Orange pigmentation around eyes (subtle border)
+                    headBox(12, 7, 4, 3, SAGE_ORANGE); headBox(16, 7, 4, 3, SAGE_ORANGE);
+                    // Yellow eyes
+                    headBox(13, 8, 2, 2, K_YELLOW); headBox(17, 8, 2, 2, K_YELLOW);
+                    // Horizontal slit pupils
+                    headBox(13, 8, 2, 1, BLACK); headBox(17, 8, 2, 1, BLACK);
                 } else {
                     headBox(13, 8, 2, 2, WHITE); headBox(17, 8, 2, 2, WHITE);
                     headDot(14, 8, BLUE); headDot(17, 8, BLUE);
                 }
                 
                 // Whisker marks
-                const whiskerColor = isTransformed ? K_BLACK : 0x884422;
-                headBox(12, 10, 2, 1, whiskerColor); headBox(12, 12, 2, 1, whiskerColor);
-                headBox(18, 10, 2, 1, whiskerColor); headBox(18, 12, 2, 1, whiskerColor);
+                const whiskerColor = isKuramaMode ? K_BLACK : 0x884422;
+                // Thicker whiskers for Kurama mode
+                if (isKuramaMode) {
+                    headBox(11, 10, 3, 1, whiskerColor); headBox(11, 12, 3, 1, whiskerColor);
+                    headBox(18, 10, 3, 1, whiskerColor); headBox(18, 12, 3, 1, whiskerColor);
+                } else {
+                    headBox(12, 10, 2, 1, whiskerColor); headBox(12, 12, 2, 1, whiskerColor);
+                    headBox(18, 10, 2, 1, whiskerColor); headBox(18, 12, 2, 1, whiskerColor);
+                }
                 
                 // Spiky Hair
-                if (isTransformed) {
+                if (isKuramaMode) {
                     // Even more massive spiky hair
                     headBox(10, 0, 12, 5, hairColor);
                     headBox(12, -4, 3, 4, hairColor); headBox(17, -4, 3, 4, hairColor);
