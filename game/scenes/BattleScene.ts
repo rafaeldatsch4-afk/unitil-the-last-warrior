@@ -386,6 +386,20 @@ export default class BattleScene extends Phaser.Scene {
           () => { this.mobileP1Special = true; }, 
           () => { this.mobileP1Special = false; this.mobileP1SpecialJustUp = true; }
       );
+
+      // Pause Button (Top Center)
+      const pauseBtn = this.add.circle(480, 40, 30, 0x333333, 0.6).setInteractive().setDepth(100);
+      this.add.text(480, 40, '||', { fontSize: '24px', fontStyle: 'bold' }).setOrigin(0.5).setDepth(101);
+      
+      pauseBtn.on('pointerdown', () => {
+          pauseBtn.setAlpha(0.9);
+          if(this.cache.audio.exists('sfx_select')) this.sound.play('sfx_select');
+          this.scene.pause();
+          this.scene.launch('PauseScene');
+      });
+      
+      pauseBtn.on('pointerup', () => pauseBtn.setAlpha(0.6));
+      pauseBtn.on('pointerout', () => pauseBtn.setAlpha(0.6));
   }
 
   performAttack(isPlayer: boolean) {
@@ -791,6 +805,10 @@ export default class BattleScene extends Phaser.Scene {
                   case 'naruto':
                       if (isSuper) this.specialRasenshuriken(isPlayer);
                       else this.specialRasengan(isPlayer, false);
+                      break;
+                  case 'batman':
+                      if (isSuper) this.specialTheDarkKnight(isPlayer);
+                      else this.specialBatarang(isPlayer);
                       break;
                   default: 
                       this.specialBeam(isPlayer, isSuper, data.specialColor, false, false, 'generic'); 
@@ -2142,6 +2160,115 @@ export default class BattleScene extends Phaser.Scene {
                           }
                       });
                   }
+              });
+          }
+      });
+  }
+
+  private specialBatarang(isP: boolean) {
+      const attacker = isP ? this.player : this.enemy;
+      const target = isP ? this.enemy : this.player;
+      const transLevel = isP ? this.playerTransformLevel : this.enemyTransformLevel;
+      const dmg = Math.floor(35 * this.getDamageMultiplier(transLevel));
+      
+      this.log("BATARANG!");
+      if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack');
+
+      const hand = this.getHandPosition(isP);
+      
+      // Throw 3 batarangs
+      for(let i=0; i<3; i++) {
+          this.time.delayedCall(i * 150, () => {
+              if(!this.scene.isActive()) return;
+              
+              const batarang = this.add.sprite(hand.x, hand.y, 'batarang').setDepth(15);
+              
+              // Spin animation
+              this.tweens.add({
+                  targets: batarang,
+                  angle: 360 * 4,
+                  duration: 400,
+                  ease: 'Linear'
+              });
+
+              // Move to target
+              this.tweens.add({
+                  targets: batarang,
+                  x: target.x,
+                  y: target.y + Phaser.Math.Between(-20, 20),
+                  duration: 400,
+                  ease: 'Power1',
+                  onComplete: () => {
+                      if(!this.scene.isActive()) return;
+                      this.createImpactEffect(batarang.x, batarang.y, 0x111111);
+                      if(this.cache.audio.exists('sfx_hit')) this.sound.play('sfx_hit');
+                      batarang.destroy();
+                      
+                      if (i === 2) {
+                          this.takeDamage(!isP, dmg);
+                          this.cameras.main.shake(150, 0.02);
+                          this.onSpecialComplete(isP);
+                      }
+                  }
+              });
+          });
+      }
+  }
+
+  private specialTheDarkKnight(isP: boolean) {
+      const attacker = isP ? this.player : this.enemy;
+      const target = isP ? this.enemy : this.player;
+      const transLevel = isP ? this.playerTransformLevel : this.enemyTransformLevel;
+      const dmg = Math.floor(100 * this.getDamageMultiplier(transLevel));
+      const startX = attacker.x;
+
+      this.log("THE DARK KNIGHT!");
+      if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack');
+
+      // Screen goes dark
+      const darkOverlay = this.add.rectangle(this.cameras.main.width/2, this.cameras.main.height/2, this.cameras.main.width, this.cameras.main.height, 0x000000, 0).setDepth(10);
+      
+      this.tweens.add({
+          targets: darkOverlay,
+          fillAlpha: 0.8,
+          duration: 300,
+          onComplete: () => {
+              if(!this.scene.isActive()) return;
+              
+              // Teleport behind target
+              attacker.x = target.x + (isP ? 60 : -60);
+              
+              // Multiple strikes in the dark
+              for(let i=0; i<8; i++) {
+                  this.time.delayedCall(i * 100, () => {
+                      if(!this.scene.isActive()) return;
+                      const cx = target.x + Phaser.Math.Between(-30, 30);
+                      const cy = target.y + Phaser.Math.Between(-40, 40);
+                      this.createImpactEffect(cx, cy, 0xffffff);
+                      if(this.cache.audio.exists('sfx_hit')) this.sound.play('sfx_hit');
+                  });
+              }
+
+              this.time.delayedCall(900, () => {
+                  if(!this.scene.isActive()) return;
+                  
+                  // Final explosive strike
+                  this.createImpactEffect(target.x, target.y, 0xf1c40f);
+                  this.cameras.main.flash(300, 255, 255, 255);
+                  this.cameras.main.shake(400, 0.05);
+                  this.takeDamage(!isP, dmg);
+                  
+                  // Fade out darkness and return
+                  this.tweens.add({
+                      targets: darkOverlay,
+                      fillAlpha: 0,
+                      duration: 300,
+                      onComplete: () => {
+                          darkOverlay.destroy();
+                          attacker.x = startX;
+                          this.onSpecialComplete(isP);
+                      }
+                  });
               });
           }
       });

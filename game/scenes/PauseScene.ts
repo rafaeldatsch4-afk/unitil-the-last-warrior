@@ -23,12 +23,21 @@ export default class PauseScene extends Phaser.Scene {
       strokeThickness: 6
     }).setOrigin(0.5);
 
-    // Resume Instruction
-    this.add.text(width / 2, height / 2 + 30, 'Press ESC to Resume', {
-      fontSize: '24px',
-      color: '#aaaaaa',
+    // Resume Button
+    const resumeBtn = this.add.text(width / 2, height / 2 + 30, 'RESUME GAME', {
+      fontSize: '28px',
+      color: '#2ecc71',
+      fontStyle: 'bold',
       fontFamily: 'Arial'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    resumeBtn.on('pointerover', () => resumeBtn.setColor('#58d68d'));
+    resumeBtn.on('pointerout', () => resumeBtn.setColor('#2ecc71'));
+    resumeBtn.on('pointerdown', () => {
+      this.sound.play('sfx_select');
+      this.scene.resume('BattleScene');
+      this.scene.stop();
+    });
 
     // Quit Instruction
     const quitBtn = this.add.text(width / 2, height / 2 + 100, 'QUIT TO MENU', {

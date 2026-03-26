@@ -135,6 +135,14 @@ export default class PreloadScene extends Phaser.Scene {
     s.fillStyle(0x222222, 1); s.fillCircle(16, 16, 2);
     s.generateTexture('shuriken', 32, 32);
     s.destroy();
+
+    // Batarang
+    const b = this.make.graphics({ x: 0, y: 0 });
+    b.fillStyle(0x111111, 1);
+    b.fillTriangle(16, 16, 32, 8, 24, 24);
+    b.fillTriangle(16, 16, 0, 8, 8, 24);
+    b.generateTexture('batarang', 32, 32);
+    b.destroy();
   }
 
   createAudioAssets() {
@@ -460,13 +468,25 @@ export default class PreloadScene extends Phaser.Scene {
                 break;
             }
             case 'gohan': {
-                const GI_PURPLE = 0x2e1a47; const GI_SHADOW = 0x1d0f2e; const SASH_RED = 0xd92525; const SHOE_BROWN = 0x6d4c41; const HAIR_BASE = BLACK; const HAIR_BEAST = 0xeeeeff; const EYE_BEAST = 0xff0000;
-                const hairColor = isTransformed ? HAIR_BEAST : HAIR_BASE; const eyeColor = isTransformed ? EYE_BEAST : BLACK;
+                const GI_PURPLE = 0x4a235a; // Vibrant purple Demon Gi
+                const GI_SHADOW = 0x2e1a47; 
+                const SASH_RED = 0xc0392b; 
+                const SASH_SHADOW = 0x922b21;
+                const SHOE_BROWN = 0x8d6e63; 
+                const WRISTBAND_BLUE = 0x2980b9;
+                const HAIR_BASE = BLACK; 
+                const HAIR_BEAST = 0xf8f9fa; // Very bright silver/white
+                const HAIR_SHADOW = 0xced4da;
+                const EYE_BEAST = 0xff0000;
+                
+                const hairColor = isTransformed ? HAIR_BEAST : HAIR_BASE; 
+                const eyeColor = isTransformed ? EYE_BEAST : BLACK;
 
                 if (isTransformed) {
-                    // Layered Violet/Magenta Aura
+                    // Layered Violet/Magenta/Red/Blue Aura (Beast aura is wild)
                     const AURA_VIOLET = 0x8a2be2;
                     const AURA_MAGENTA = 0xff00ff;
+                    const AURA_RED = 0xff3333;
                     const AURA_LIGHT = 0xddaaff;
                     
                     const drawAura = (x: number, y: number, w: number, h: number) => {
@@ -475,37 +495,65 @@ export default class PreloadScene extends Phaser.Scene {
 
                     // Outer violet aura (jagged)
                     canvas.fillStyle(AURA_VIOLET, 0.3);
-                    drawAura(2, -20, 28, 52);
-                    drawAura(4, -26, 24, 58);
-                    drawAura(8, -32, 16, 64);
+                    drawAura(0, -30, 32, 62);
+                    drawAura(2, -36, 28, 68);
+                    drawAura(6, -42, 20, 74);
                     
                     // Inner magenta aura
                     canvas.fillStyle(AURA_MAGENTA, 0.5);
-                    drawAura(5, -12, 22, 44);
-                    drawAura(7, -18, 18, 50);
-                    drawAura(10, -24, 12, 56);
+                    drawAura(3, -20, 26, 52);
+                    drawAura(5, -26, 22, 58);
+                    drawAura(8, -32, 16, 64);
                     
+                    // Reddish inner core
+                    canvas.fillStyle(AURA_RED, 0.4);
+                    drawAura(6, -10, 20, 42);
+                    drawAura(10, -18, 12, 50);
+
                     // Core light aura
                     canvas.fillStyle(AURA_LIGHT, 0.6);
                     drawAura(8, -4, 16, 36);
                     drawAura(12, -12, 8, 44);
                     
-                    // Aura lightning / energy sparks
-                    canvas.fillStyle(0xffffff, 0.8);
+                    // Aura lightning / energy sparks (Blue/Purple lightning)
+                    canvas.fillStyle(0x00ffff, 0.8);
                     if (f % 3 === 0) {
-                        drawAura(6, 10, 2, 8); drawAura(8, 16, 4, 2); drawAura(10, 18, 2, 6);
-                        drawAura(24, -5, 2, 6); drawAura(22, 0, 4, 2);
+                        drawAura(4, 10, 2, 12); drawAura(6, 16, 6, 2); drawAura(10, 18, 2, 8);
+                        drawAura(26, -10, 2, 10); drawAura(22, 0, 6, 2);
                     } else if (f % 3 === 1) {
-                        drawAura(26, 15, 2, 8); drawAura(22, 21, 4, 2); drawAura(20, 23, 2, 6);
-                        drawAura(6, -8, 2, 6); drawAura(8, -4, 4, 2);
+                        drawAura(28, 15, 2, 10); drawAura(22, 21, 8, 2); drawAura(20, 23, 2, 8);
+                        drawAura(4, -15, 2, 12); drawAura(6, -5, 6, 2);
                     } else {
-                        drawAura(4, 0, 2, 6); drawAura(6, 4, 4, 2);
-                        drawAura(24, 25, 2, 8); drawAura(20, 31, 4, 2);
+                        drawAura(2, -5, 2, 10); drawAura(4, 2, 6, 2);
+                        drawAura(26, 25, 2, 12); drawAura(20, 31, 8, 2);
                     }
                 }
 
-                box(10, 23, 4, 7, GI_PURPLE); box(18, 23, 4, 7, GI_PURPLE); box(10, 30, 4, 2, SHOE_BROWN); box(18, 30, 4, 2, SHOE_BROWN);
-                box(11, 14, 10, 9, GI_PURPLE); box(12, 16, 8, 3, GI_SHADOW); box(11, 22, 10, 3, SASH_RED); box(8, 19, 3, 3, GI_PURPLE); box(21, 19, 3, 3, GI_PURPLE); box(8, 15, 3, 4, SKIN); box(21, 15, 3, 4, SKIN); box(8, 22, 3, 2, SKIN); box(21, 22, 3, 2, SKIN);
+                // Legs
+                box(10, 23, 5, 7, GI_PURPLE); box(17, 23, 5, 7, GI_PURPLE);
+                box(11, 23, 3, 7, GI_SHADOW); box(18, 23, 3, 7, GI_SHADOW); // Leg folds
+                
+                // Shoes
+                box(9, 30, 6, 2, SHOE_BROWN); box(17, 30, 6, 2, SHOE_BROWN);
+                
+                // Torso
+                box(11, 14, 10, 9, GI_PURPLE);
+                box(12, 15, 8, 7, GI_SHADOW); // Chest shading
+                
+                // Sash
+                box(10, 21, 12, 3, SASH_RED);
+                box(10, 23, 12, 1, SASH_SHADOW);
+                box(10, 22, 2, 4, SASH_RED); // Sash knot hanging
+                
+                // Arms
+                box(7, 15, 4, 4, SKIN); box(21, 15, 4, 4, SKIN); // Shoulders/Biceps
+                box(7, 19, 3, 3, SKIN); box(22, 19, 3, 3, SKIN); // Forearms
+                
+                // Wristbands
+                box(7, 21, 3, 2, WRISTBAND_BLUE); box(22, 21, 3, 2, WRISTBAND_BLUE);
+                
+                // Hands
+                box(7, 23, 3, 2, SKIN); box(22, 23, 3, 2, SKIN);
                 
                 headBox(12, 6, 8, 7, SKIN); 
                 
@@ -520,6 +568,7 @@ export default class PreloadScene extends Phaser.Scene {
                     headBox(17, 7, 4, 2, 0x880000);
                     headDot(14, 8, 0x880000); headDot(17, 8, 0x880000);
                 } else {
+                    headBox(12, 9, 3, 2, WHITE); headBox(17, 9, 3, 2, WHITE); 
                     headDot(13, 9, WHITE); headDot(17, 9, WHITE); 
                     headDot(14, 9, eyeColor); headDot(17, 9, eyeColor); 
                 }
@@ -527,69 +576,76 @@ export default class PreloadScene extends Phaser.Scene {
 
                 if (isTransformed) { 
                     // Massive gravity-defying silver/white hair
-                    headBox(9, 2, 14, 5, hairColor); // Base
+                    headBox(9, 0, 14, 6, hairColor); // Base
                     
-                    // Main central-back spike (huge, reaching up to -30)
-                    headBox(12, -22, 8, 24, hairColor); 
-                    headBox(13, -26, 6, 4, hairColor);
-                    headBox(14, -28, 4, 2, hairColor);
-                    headBox(15, -30, 2, 2, hairColor);
+                    // Main central-back spike (huge, reaching up to -35)
+                    headBox(12, -25, 8, 25, hairColor); 
+                    headBox(13, -30, 6, 5, hairColor);
+                    headBox(14, -35, 4, 5, hairColor);
+                    headBox(15, -38, 2, 3, hairColor);
                     
                     // Left sweeping spikes
-                    headBox(6, -12, 6, 14, hairColor);
-                    headBox(4, -18, 4, 8, hairColor);
-                    headBox(2, -22, 3, 6, hairColor);
-                    headBox(1, -24, 2, 4, hairColor);
+                    headBox(5, -15, 7, 15, hairColor);
+                    headBox(3, -22, 5, 7, hairColor);
+                    headBox(1, -26, 3, 4, hairColor);
                     
                     // Right sweeping spikes
-                    headBox(20, -12, 6, 14, hairColor);
-                    headBox(24, -18, 4, 8, hairColor);
-                    headBox(27, -22, 3, 6, hairColor);
-                    headBox(29, -24, 2, 4, hairColor);
+                    headBox(20, -15, 7, 15, hairColor);
+                    headBox(24, -22, 5, 7, hairColor);
+                    headBox(28, -26, 3, 4, hairColor);
                     
                     // Lower side spikes
-                    headBox(4, -2, 5, 8, hairColor);
-                    headBox(2, 2, 3, 6, hairColor);
-                    headBox(23, -2, 5, 8, hairColor);
-                    headBox(27, 2, 3, 6, hairColor);
+                    headBox(3, -5, 6, 10, hairColor);
+                    headBox(1, 0, 4, 5, hairColor);
+                    headBox(23, -5, 6, 10, hairColor);
+                    headBox(27, 0, 4, 5, hairColor);
                     
-                    // Front bang (iconic single large bang)
-                    headBox(13, 6, 4, 8, hairColor);
-                    headBox(14, 14, 2, 4, hairColor);
-                    headBox(15, 18, 1, 2, hairColor);
+                    // Front bang (iconic single large bang over the right eye)
+                    headBox(12, 6, 5, 10, hairColor);
+                    headBox(13, 16, 3, 4, hairColor);
+                    headBox(14, 20, 1, 3, hairColor);
                     
                     // Hair shading (light blue/grey)
-                    const shade = 0xbbccdd;
-                    headBox(12, -22, 2, 24, shade);
-                    headBox(13, -26, 1, 4, shade);
-                    headBox(6, -12, 2, 14, shade);
-                    headBox(4, -18, 1, 8, shade);
-                    headBox(20, -12, 2, 14, shade);
-                    headBox(24, -18, 1, 8, shade);
-                    headBox(13, 6, 1, 8, shade);
+                    headBox(12, -25, 2, 25, HAIR_SHADOW);
+                    headBox(13, -30, 1, 5, HAIR_SHADOW);
+                    headBox(5, -15, 2, 15, HAIR_SHADOW);
+                    headBox(3, -22, 1, 7, HAIR_SHADOW);
+                    headBox(20, -15, 2, 15, HAIR_SHADOW);
+                    headBox(24, -22, 1, 7, HAIR_SHADOW);
+                    headBox(12, 6, 1, 10, HAIR_SHADOW);
                 } else { 
-                    headBox(12, 2, 8, 4, hairColor); headBox(13, 0, 2, 3, hairColor); headBox(17, 0, 2, 3, hairColor); headBox(15, -1, 2, 4, hairColor); headDot(16, 6, hairColor); 
+                    // Ultimate Gohan hair (spiky but normal length, one bang)
+                    headBox(10, 0, 12, 6, hairColor); 
+                    headBox(11, -4, 4, 4, hairColor); 
+                    headBox(17, -4, 4, 4, hairColor); 
+                    headBox(14, -6, 4, 6, hairColor); 
+                    // Bang
+                    headBox(13, 6, 3, 4, hairColor);
+                    headBox(14, 10, 1, 2, hairColor);
                 }
                 break;
             }
             case 'frieza': {
-                const WHITE_SKIN = 0xfbfbff; 
-                const WHITE_SHADOW = 0xc0c0d0; 
-                const PURPLE_GEM = 0x660099; 
-                const PURPLE_HIGHLIGHT = 0xaa44dd; 
-                const PURPLE_SHADOW = 0x330055;
+                const WHITE_SKIN = 0xf2f5f8; // Sleeker, slightly cool white
+                const WHITE_SHADOW = 0xcbd5e1; 
+                const PURPLE_GEM = 0x7e22ce; // Vibrant purple
+                const PURPLE_HIGHLIGHT = 0xa855f7; 
+                const PURPLE_SHADOW = 0x4c1d95;
 
-                const GOLD_SKIN = 0xffd700; 
-                const GOLD_SHADOW = 0xccaa00; 
-                const GOLD_HIGHLIGHT = 0xfff080;
-                const DARK_PURPLE_SKIN = 0x5c2b6b; 
-                const DARK_PURPLE_SHADOW = 0x3d1c47;
+                const GOLD_SKIN = 0xf59e0b; // Rich gold
+                const GOLD_SHADOW = 0xb45309; 
+                const GOLD_HIGHLIGHT = 0xfde047;
+                const DARK_PURPLE_SKIN = 0x4c1d95; // Dark purple for face/hands/feet
+                const DARK_PURPLE_SHADOW = 0x2e1065;
+                const DARK_PURPLE_HIGHLIGHT = 0x6d28d9;
 
                 const mainColor = isTransformed ? GOLD_SKIN : WHITE_SKIN;
                 const mainShadow = isTransformed ? GOLD_SHADOW : WHITE_SHADOW;
                 const mainHighlight = isTransformed ? GOLD_HIGHLIGHT : WHITE_SKIN;
+                
                 const secondaryColor = isTransformed ? DARK_PURPLE_SKIN : WHITE_SKIN;
                 const secondaryShadow = isTransformed ? DARK_PURPLE_SHADOW : WHITE_SHADOW;
+                const secondaryHighlight = isTransformed ? DARK_PURPLE_HIGHLIGHT : WHITE_SKIN;
 
                 const gemColor = isTransformed ? mainColor : PURPLE_GEM;
                 const gemHighlight = isTransformed ? mainHighlight : PURPLE_HIGHLIGHT;
@@ -622,13 +678,14 @@ export default class PreloadScene extends Phaser.Scene {
                 // Shins
                 box(11, 27, 4, 4, shinColor); box(17, 27, 4, 4, shinColor);
                 box(12, 27, 2, 4, shinHighlight); box(18, 27, 2, 4, shinHighlight); // Shiny shins
+                dot(12, 27, WHITE); dot(18, 27, WHITE); // Shin specular
                 
                 // Feet (3 toes)
                 box(10, 31, 5, 2, secondaryColor); box(17, 31, 5, 2, secondaryColor);
                 // Left foot toes
-                box(10, 32, 1, 1, mainColor); box(12, 32, 1, 1, mainColor); box(14, 32, 1, 1, mainColor);
+                box(10, 32, 1, 1, secondaryHighlight); box(12, 32, 1, 1, secondaryHighlight); box(14, 32, 1, 1, secondaryHighlight);
                 // Right foot toes
-                box(17, 32, 1, 1, mainColor); box(19, 32, 1, 1, mainColor); box(21, 32, 1, 1, mainColor);
+                box(17, 32, 1, 1, secondaryHighlight); box(19, 32, 1, 1, secondaryHighlight); box(21, 32, 1, 1, secondaryHighlight);
                 // Shadows between toes
                 box(11, 32, 1, 1, secondaryShadow); box(13, 32, 1, 1, secondaryShadow);
                 box(18, 32, 1, 1, secondaryShadow); box(20, 32, 1, 1, secondaryShadow);
@@ -645,6 +702,7 @@ export default class PreloadScene extends Phaser.Scene {
                 // Chest Gem
                 box(13, 15, 6, 3, gemColor);
                 box(14, 15, 4, 1, gemHighlight); // Shiny chest
+                dot(14, 15, WHITE); // Specular shine
                 
                 // Neck
                 box(13, 12, 6, 2, secondaryColor);
@@ -652,11 +710,13 @@ export default class PreloadScene extends Phaser.Scene {
                 
                 // Shoulders (Spherical)
                 box(7, 13, 5, 4, mainColor);
+                box(8, 13, 3, 1, mainHighlight); // Shoulder pad rim shine
                 box(8, 14, 3, 2, gemColor);
                 box(8, 14, 2, 1, gemHighlight);
                 dot(8, 14, WHITE); // Specular shine
                 
                 box(20, 13, 5, 4, mainColor);
+                box(21, 13, 3, 1, mainHighlight); // Shoulder pad rim shine
                 box(21, 14, 3, 2, gemColor);
                 box(22, 14, 2, 1, gemHighlight);
                 dot(22, 14, WHITE); // Specular shine
@@ -665,6 +725,7 @@ export default class PreloadScene extends Phaser.Scene {
                 box(8, 17, 3, 3, secondaryColor); box(21, 17, 3, 3, secondaryColor); // Upper arm
                 box(8, 20, 3, 3, forearmColor); box(21, 20, 3, 3, forearmColor); // Forearm
                 box(9, 20, 1, 3, forearmHighlight); box(22, 20, 1, 3, forearmHighlight); // Forearm shine
+                dot(9, 20, WHITE); dot(22, 20, WHITE); // Forearm specular
                 
                 // Hands
                 box(8, 23, 3, 2, secondaryColor); box(21, 23, 3, 2, secondaryColor);
@@ -677,8 +738,9 @@ export default class PreloadScene extends Phaser.Scene {
                 
                 // Dome
                 headBox(13, 1, 6, 4, gemColor);
-                headBox(14, 2, 4, 2, gemHighlight); // Shiny dome
-                headDot(14, 2, WHITE); // Specular reflection
+                headBox(14, 1, 4, 2, gemHighlight); // Shiny dome
+                headDot(14, 1, WHITE); // Specular reflection
+                headDot(15, 1, WHITE); // Extra shine
                 
                 // Eyes & Face details
                 headBox(13, 8, 2, 1, WHITE); headBox(17, 8, 2, 1, WHITE); // Sclera
@@ -1206,6 +1268,66 @@ export default class PreloadScene extends Phaser.Scene {
                 // Head (Red with yellow sides)
                 box(21, malletY - 6, 6, 8, RED);
                 box(20, malletY - 4, 8, 4, YELLOW);
+                break;
+            }
+            case 'batman': {
+                const isArmored = form === 1;
+                const SUIT_GREY = isArmored ? 0x2c3e50 : 0x34495e;
+                const BLACK = 0x111111;
+                const YELLOW = 0xf1c40f;
+                const SKIN = 0xffce9e;
+                const ARMOR_GLOW = 0x00ffff; // Cyan glow for armored eyes
+
+                // Cape (Drawn first to be behind)
+                const capeColor = isArmored ? 0x1a1a1a : 0x000000;
+                box(6, 14, 20, 18, capeColor);
+                box(5, 16, 22, 14, capeColor);
+                // Scalloped edges
+                dot(7, 32, capeColor); dot(11, 32, capeColor); dot(15, 32, capeColor); dot(19, 32, capeColor); dot(23, 32, capeColor);
+
+                // Legs
+                box(11, 24, 4, 6, SUIT_GREY); box(17, 24, 4, 6, SUIT_GREY);
+                // Boots
+                box(10, 28, 5, 4, BLACK); box(17, 28, 5, 4, BLACK);
+                if (isArmored) {
+                    // Armor plates on legs
+                    box(11, 25, 4, 2, 0x7f8c8d); box(17, 25, 4, 2, 0x7f8c8d);
+                }
+
+                // Torso
+                box(10, 14, 12, 10, SUIT_GREY);
+                // Bat Symbol
+                box(13, 16, 6, 3, BLACK);
+                dot(12, 16, BLACK); dot(19, 16, BLACK); // Wings
+                dot(15, 15, BLACK); dot(16, 15, BLACK); // Ears of the bat
+                
+                // Utility Belt
+                box(10, 22, 12, 2, YELLOW);
+                box(11, 22, 2, 2, 0xd4ac0d); // Pouches
+                box(15, 22, 2, 2, 0xd4ac0d);
+                box(19, 22, 2, 2, 0xd4ac0d);
+
+                // Arms
+                box(7, 14, 3, 7, SUIT_GREY); box(22, 14, 3, 7, SUIT_GREY);
+                // Gauntlets
+                box(6, 18, 4, 5, BLACK); box(22, 18, 4, 5, BLACK);
+                // Fins on gauntlets
+                dot(5, 19, BLACK); dot(5, 21, BLACK);
+                dot(26, 19, BLACK); dot(26, 21, BLACK);
+
+                // Head (Cowl)
+                headBox(11, 5, 10, 9, BLACK);
+                if (isArmored) {
+                   headBox(12, 7, 8, 6, 0x34495e); // Metal faceplate
+                   headBox(13, 9, 2, 1, ARMOR_GLOW); headBox(17, 9, 2, 1, ARMOR_GLOW); // Glowing eyes
+                } else {
+                   headBox(12, 8, 8, 5, SKIN); // Face opening
+                   headBox(13, 9, 2, 1, 0xffffff); headBox(17, 9, 2, 1, 0xffffff); // White eyes
+                   headBox(12, 11, 8, 2, SKIN); // Chin
+                }
+                
+                // Bat Ears
+                headBox(11, 2, 2, 4, BLACK); headBox(19, 2, 2, 4, BLACK);
                 break;
             }
         }

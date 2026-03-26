@@ -196,5 +196,20 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     specialName: "RASENGAN",
     superName: "RASENSHURIKEN",
     specialColor: 0x3498db
+  },
+  {
+    id: 13,
+    key: "batman",
+    name: "Batman",
+    price: 1800,
+    unlocked: true,
+    maxHp: 240,
+    transformAvailable: true,
+    sprite: "",
+    frameWidth: 64,
+    frameHeight: 64,
+    specialName: "BATARANG",
+    superName: "THE DARK KNIGHT",
+    specialColor: 0x34495e
   }
 ];
