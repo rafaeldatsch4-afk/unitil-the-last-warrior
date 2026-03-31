@@ -261,6 +261,7 @@ export default class BattleScene extends Phaser.Scene {
   createFighterSprites() {
       // Player 1
       this.player = this.add.sprite(this.p1StartPos.x, this.p1StartPos.y, this.playerData.key)
+          .setOrigin(0.5, 0.5)
           .setScale(3) // Scaled down from 4 to fit screen better (Texture height 128 * 3 = 384px)
           .setDepth(1); 
       this.createAnimsFor(this.playerData.key);
@@ -274,6 +275,7 @@ export default class BattleScene extends Phaser.Scene {
 
       // Player 2
       this.enemy = this.add.sprite(this.p2StartPos.x, this.p2StartPos.y, this.enemyData.key)
+          .setOrigin(0.5, 0.5)
           .setScale(3)
           .setFlipX(true)
           .setDepth(1);
@@ -284,24 +286,27 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   createAnimsFor(key: string) {
-      const createAnim = (animKey: string, texture: string) => {
+      const createAnim = (animKey: string, texture: string, start: number, end: number, frameRate: number, repeat: number = -1) => {
           if(!this.textures.exists(texture)) return;
           if(!this.anims.exists(animKey)) {
              this.anims.create({
                   key: animKey,
                   frames: this.anims.generateFrameNumbers(texture, { 
-                      start: 0, 
-                      end: 3
+                      start: start, 
+                      end: end
                   }),
-                  frameRate: 6,
-                  repeat: -1
+                  frameRate: frameRate,
+                  repeat: repeat
               });
           }
       };
-      createAnim(`${key}_idle`, key);
-      createAnim(`${key}_ssj_idle`, `${key}_ssj`);
+      createAnim(`${key}_idle`, key, 0, 3, 6);
+      createAnim(`${key}_attack`, key, 4, 5, 12, 0);
+      createAnim(`${key}_ssj_idle`, `${key}_ssj`, 0, 3, 6);
+      createAnim(`${key}_ssj_attack`, `${key}_ssj`, 4, 5, 12, 0);
       if (key === 'goku' || key === 'vegeta' || key === 'naruto') {
-          createAnim(`${key}_ui_idle`, `${key}_ui`);
+          createAnim(`${key}_ui_idle`, `${key}_ui`, 0, 3, 6);
+          createAnim(`${key}_ui_attack`, `${key}_ui`, 4, 5, 12, 0);
       }
   }
 
@@ -402,6 +407,19 @@ export default class BattleScene extends Phaser.Scene {
       pauseBtn.on('pointerout', () => pauseBtn.setAlpha(0.6));
   }
 
+  getAnimKey(baseKey: string, transLevel: number, animType: string): string {
+      let texKey = baseKey;
+      if (transLevel === 1) texKey = `${baseKey}_ssj`;
+      else if (transLevel === 2) texKey = `${baseKey}_ui`;
+      
+      // Fallback to base animation if transformed animation doesn't exist
+      const animKey = `${texKey}_${animType}`;
+      if (this.anims.exists(animKey)) {
+          return animKey;
+      }
+      return `${baseKey}_${animType}`;
+  }
+
   performAttack(isPlayer: boolean) {
       if(this.isBattleOver) return;
       const attacker = isPlayer ? this.player : this.enemy;
@@ -409,95 +427,238 @@ export default class BattleScene extends Phaser.Scene {
       const startX = isPlayer ? this.p1StartPos.x : this.p2StartPos.x;
       const startY = isPlayer ? this.p1StartPos.y : this.p2StartPos.y;
       const transLevel = isPlayer ? this.playerTransformLevel : this.enemyTransformLevel;
+      const attackerData = isPlayer ? this.playerData : this.enemyData;
 
       this.setActionState(isPlayer, true);
 
+      // Determine character type
+      const meleeChars = ['leonardo', 'minipekka', 'cyberninja', 'chapolim', 'batman'];
+      const isMelee = meleeChars.includes(attackerData.key);
+
       // 1. Windup (Hop Back & Rotate)
-      const windupDist = isPlayer ? -40 : 40;
-      const rotDir = isPlayer ? -0.2 : 0.2;
+      const windupDist = isPlayer ? -60 : 60;
+      const rotDir = isPlayer ? -0.3 : 0.3;
 
       this.tweens.add({
           targets: attacker,
           x: startX + windupDist,
-          y: startY - 10,
+          y: startY - 20,
           rotation: rotDir,
           scaleX: 2.8,
           scaleY: 3.2,
-          duration: 100,
-          ease: 'Power1',
+          duration: 150, // Slightly longer windup for impact
+          ease: 'Back.easeOut',
           onComplete: () => {
               if(!this.scene.isActive()) return;
               
-              // Dash Trail Effect
-              const trailTimer = this.time.addEvent({
-                  delay: 20,
-                  callback: () => {
-                      if (!this.scene.isActive() || !attacker.active) return;
-                      const ghost = this.add.sprite(attacker.x, attacker.y, attacker.texture.key, attacker.frame.name)
-                          .setScale(attacker.scaleX, attacker.scaleY)
-                          .setRotation(attacker.rotation)
-                          .setFlipX(attacker.flipX)
-                          .setTint(0x00ffff)
-                          .setAlpha(0.5)
-                          .setDepth(0);
-                      this.tweens.add({
-                          targets: ghost,
-                          alpha: 0,
-                          scaleX: 1.5,
-                          scaleY: 1.5,
-                          duration: 200,
-                          onComplete: () => ghost.destroy()
-                      });
-                  },
-                  repeat: 7
-              });
+              if (isMelee) {
+                  // MELEE: Quick Lunge with Follow-Through
+                  const trailTimer = this.time.addEvent({
+                      delay: 15,
+                      callback: () => {
+                          if (!this.scene.isActive() || !attacker.active) return;
+                          const ghost = this.add.sprite(attacker.x, attacker.y, attacker.texture.key, attacker.frame.name)
+                              .setOrigin(0.5, 0.5)
+                              .setScale(attacker.scaleX, attacker.scaleY)
+                              .setRotation(attacker.rotation)
+                              .setFlipX(attacker.flipX)
+                              .setTint(0x00ffff)
+                              .setAlpha(0.6)
+                              .setDepth(0);
+                          this.tweens.add({
+                              targets: ghost,
+                              alpha: 0,
+                              scaleX: 1.2,
+                              scaleY: 1.2,
+                              duration: 150,
+                              onComplete: () => ghost.destroy()
+                          });
+                      },
+                      repeat: 10
+                  });
 
-              // 2. Lunge Forward
-              this.tweens.add({
-                  targets: attacker,
-                  x: target.x + (isPlayer ? -60 : 60),
-                  y: startY,
-                  rotation: -rotDir * 1.5,
-                  scaleX: 3.2,
-                  scaleY: 2.8,
-                  duration: 150,
-                  ease: 'Expo.easeIn',
-                  onComplete: () => {
-                     trailTimer.remove();
-                     if (!this.scene.isActive()) return;
-                     
-                     // 3. Impact
-                     if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack');
-                     
-                     const baseDamage = 10;
-                     const damage = Math.floor(baseDamage * this.getDamageMultiplier(transLevel));
-                     
-                     this.takeDamage(!isPlayer, damage); 
-                     this.modifyKi(isPlayer, 5);
-                     
-                     // Screen Shake & Flash
-                     this.cameras.main.shake(150, 0.02);
-                     
-                     // Visual Impact
-                     this.createImpactEffect(target.x, target.y - 20, 0xffffff);
+                  // Lunge Forward
+                  attacker.play(this.getAnimKey(attackerData.key, transLevel, 'attack'));
+                  this.tweens.add({
+                      targets: attacker,
+                      x: target.x + (isPlayer ? -30 : 30), // Deeper lunge
+                      y: startY,
+                      rotation: -rotDir * 2.5, // More rotation for follow-through
+                      scaleX: 3.4,
+                      scaleY: 2.6,
+                      duration: 100, // Faster lunge
+                      ease: 'Expo.easeIn',
+                      onComplete: () => {
+                         trailTimer.remove();
+                         if (!this.scene.isActive()) return;
+                         
+                         // Impact
+                         if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack', { volume: 1.2 });
+                         
+                         const baseDamage = 10;
+                         const damage = Math.floor(baseDamage * this.getDamageMultiplier(transLevel));
+                         
+                         this.takeDamage(!isPlayer, damage); 
+                         this.modifyKi(isPlayer, 5);
+                         
+                         // Screen shake for melee
+                         this.cameras.main.shake(150, 0.015);
+                         
+                         // Visual Impact
+                         this.createImpactEffect(target.x, target.y - 20, 0xffffff);
+                         
+                         // Target hit flash
+                         this.tweens.add({
+                             targets: target,
+                             alpha: 0.5,
+                             yoyo: true,
+                             duration: 50,
+                             repeat: 1
+                         });
 
-                     // 4. Return
-                     this.tweens.add({
-                         targets: attacker,
-                         x: startX,
-                         y: startY,
-                         rotation: 0,
-                         scaleX: 3,
-                         scaleY: 3,
-                         duration: 250,
-                         ease: 'Power2',
-                         delay: 50,
-                         onComplete: () => {
-                             if(this.scene.isActive()) this.setActionState(isPlayer, false);
-                         }
-                     });
-                  }
-              });
+                         // Follow-through pause and return
+                         this.time.delayedCall(100, () => {
+                             if (!this.scene.isActive()) return;
+                             // Return
+                             this.tweens.add({
+                                 targets: attacker,
+                                 x: startX,
+                                 y: startY,
+                                 rotation: 0,
+                                 scaleX: 3,
+                                 scaleY: 3,
+                                 duration: 300,
+                                 ease: 'Back.easeOut',
+                                 onComplete: () => {
+                                     if(this.scene.isActive()) {
+                                         attacker.play(this.getAnimKey(attackerData.key, transLevel, 'idle'));
+                                         this.setActionState(isPlayer, false);
+                                     }
+                                 }
+                             });
+                         });
+                      }
+                  });
+              } else {
+                  // BEAM: Gather energy then shoot
+                  const blastColor = attackerData.specialColor || 0x00ffff;
+                  
+                  // Gathering energy spark
+                  const gatherSpark = this.add.circle(attacker.x + (isPlayer ? 40 : -40), attacker.y - 10, 2, blastColor).setDepth(6);
+                  this.tweens.add({
+                      targets: gatherSpark,
+                      scale: 8,
+                      alpha: 0.8,
+                      duration: 150,
+                      yoyo: true,
+                      onComplete: () => gatherSpark.destroy()
+                  });
+
+                  attacker.play(this.getAnimKey(attackerData.key, transLevel, 'attack'));
+                  this.tweens.add({
+                      targets: attacker,
+                      x: startX + (isPlayer ? 30 : -30), // Forward lunge to throw
+                      y: startY,
+                      rotation: -rotDir * 0.8,
+                      scaleX: 3.2,
+                      scaleY: 2.8,
+                      duration: 150,
+                      ease: 'Power2',
+                      onComplete: () => {
+                         if (!this.scene.isActive()) return;
+                         
+                         // Shoot Blast
+                         if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam', { volume: 1.2 });
+                         
+                         // Attacker flash
+                         this.tweens.add({
+                             targets: attacker,
+                             alpha: 0.7,
+                             yoyo: true,
+                             duration: 50
+                         });
+                         
+                         const blast = this.add.circle(attacker.x + (isPlayer ? 50 : -50), attacker.y - 10, 18, blastColor).setDepth(5);
+                         const core = this.add.circle(blast.x, blast.y, 10, 0xffffff).setDepth(6);
+                         blast.setBlendMode(Phaser.BlendModes.ADD);
+                         
+                         // Beam trail
+                         const trailTimer = this.time.addEvent({
+                             delay: 10,
+                             callback: () => {
+                                 if (!this.scene.isActive() || !blast.active) return;
+                                 const trail = this.add.circle(blast.x, blast.y, 12, blastColor, 0.6).setDepth(4);
+                                 trail.setBlendMode(Phaser.BlendModes.ADD);
+                                 this.tweens.add({
+                                     targets: trail,
+                                     scale: 0.5,
+                                     alpha: 0,
+                                     duration: 200,
+                                     onComplete: () => trail.destroy()
+                                 });
+                             },
+                             repeat: 15
+                         });
+                         
+                         this.tweens.add({
+                             targets: [blast, core],
+                             x: target.x,
+                             duration: 120, // Faster beam
+                             ease: 'Linear',
+                             onComplete: () => {
+                                 trailTimer.remove();
+                                 blast.destroy();
+                                 core.destroy();
+                                 
+                                 if (!this.scene.isActive()) return;
+                                 
+                                 // Impact
+                                 if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack', { volume: 1.5 });
+                                 
+                                 const baseDamage = 10;
+                                 const damage = Math.floor(baseDamage * this.getDamageMultiplier(transLevel));
+                                 
+                                 this.takeDamage(!isPlayer, damage); 
+                                 this.modifyKi(isPlayer, 5);
+                                 
+                                 // Stronger screen shake for beam impact
+                                 this.cameras.main.shake(250, 0.04);
+                                 
+                                 // Visual Impact
+                                 this.createImpactEffect(target.x, target.y - 20, blastColor);
+                                 
+                                 // Target hit flash
+                                 this.tweens.add({
+                                     targets: target,
+                                     alpha: 0.5,
+                                     yoyo: true,
+                                     duration: 50,
+                                     repeat: 2
+                                 });
+                             }
+                         });
+
+                         // Return
+                         this.tweens.add({
+                             targets: attacker,
+                             x: startX,
+                             y: startY,
+                             rotation: 0,
+                             scaleX: 3,
+                             scaleY: 3,
+                             duration: 300,
+                             ease: 'Back.easeOut',
+                             delay: 150,
+                             onComplete: () => {
+                                 if(this.scene.isActive()) {
+                                     attacker.play(this.getAnimKey(attackerData.key, transLevel, 'idle'));
+                                     this.setActionState(isPlayer, false);
+                                 }
+                             }
+                         });
+                      }
+                  });
+              }
           }
       });
   }
@@ -601,84 +762,287 @@ export default class BattleScene extends Phaser.Scene {
           auraColor = 0xffff00; // Bright Yellow
           ringColor = 0xffaa00; // Orange
           transformText = "KURAMA LINK MODE!";
+      } else if (data.key === 'thukuna') {
+          auraColor = 0x8b0000; // Dark Red
+          ringColor = 0x000000; // Black
+          transformText = "TRUE FORM!";
       }
 
-      // FX: Massive pillar of light
-      const pillar = this.add.rectangle(sprite.x, sprite.y, 60, 1000, auraColor).setAlpha(0).setDepth(2);
+      // 1. Initial Charge Up (Screen darkens significantly)
+      const darkenColor = data.key === 'thukuna' ? 0x4a0000 : 0x000000;
+      const darken = this.add.rectangle(480, 270, 960, 540, darkenColor, 0).setDepth(1);
+      this.tweens.add({ targets: darken, fillAlpha: 0.7, duration: 800 });
       
+      let darkAuraElements: Phaser.GameObjects.GameObject[] = [];
+      if (data.key === 'thukuna') {
+          // Pulsating dark red/black aura behind him
+          for (let i = 0; i < 3; i++) {
+              const auraRing = this.add.circle(sprite.x, sprite.y, 40 + (i * 20), 0x8b0000, 0.3).setDepth(1);
+              auraRing.setBlendMode(Phaser.BlendModes.ADD);
+              this.tweens.add({
+                  targets: auraRing,
+                  scale: 3 + i,
+                  alpha: { start: 0.5, end: 0 },
+                  duration: 800 + (i * 200),
+                  repeat: -1,
+                  yoyo: false
+              });
+              darkAuraElements.push(auraRing);
+          }
+          
+          // Rising dark energy particles
+          for (let i = 0; i < 15; i++) {
+              const darkParticle = this.add.circle(
+                  sprite.x + Phaser.Math.Between(-60, 60), 
+                  sprite.y + Phaser.Math.Between(0, 100), 
+                  Phaser.Math.Between(4, 12), 
+                  0x000000, 
+                  0.7
+              ).setDepth(2);
+              this.tweens.add({
+                  targets: darkParticle,
+                  y: sprite.y - Phaser.Math.Between(150, 300),
+                  x: darkParticle.x + Phaser.Math.Between(-30, 30),
+                  alpha: 0,
+                  scale: 0.5,
+                  duration: Phaser.Math.Between(600, 1200),
+                  repeat: -1
+              });
+              darkAuraElements.push(darkParticle);
+          }
+          this.cameras.main.shake(800, 0.01);
+      }
+      
+      // Gathering energy particles
+      for (let i = 0; i < 20; i++) {
+          const angle = Phaser.Math.Between(0, 360) * (Math.PI / 180);
+          const distance = Phaser.Math.Between(100, 300);
+          const startX = sprite.x + Math.cos(angle) * distance;
+          const startY = sprite.y + Math.sin(angle) * distance;
+          
+          const particle = this.add.circle(startX, startY, Phaser.Math.Between(2, 4), auraColor).setDepth(2).setAlpha(0);
+          
+          this.tweens.add({
+              targets: particle,
+              x: sprite.x,
+              y: sprite.y,
+              alpha: { start: 0, end: 1 },
+              duration: Phaser.Math.Between(400, 800),
+              ease: 'Cubic.easeIn',
+              onComplete: () => particle.destroy()
+          });
+      }
+
+      // Pre-transform shake and float
       this.tweens.add({
           targets: sprite,
-          y: sprite.y - 50,
-          duration: 400,
+          x: sprite.x + (isPlayer ? 5 : -5),
           yoyo: true,
-          onYoyo: () => {
+          repeat: 15,
+          duration: 40,
+          onComplete: () => {
               if (!this.scene.isActive()) return;
               
-              let texKey = `${data.key}_ssj`;
-              if (isUI || isUE || isKuramaMode) texKey = `${data.key}_ui`;
+              // 2. The Explosion / Flash
+              // FX: Massive pillar of light
+              const pillar = this.add.rectangle(sprite.x, sprite.y, 150, 1200, auraColor).setAlpha(0).setDepth(2);
+              pillar.setBlendMode(Phaser.BlendModes.ADD);
+              
+              // Float up slightly during the flash
+              this.tweens.add({
+                  targets: sprite,
+                  y: sprite.y - 80,
+                  duration: 500,
+                  yoyo: true,
+                  ease: 'Sine.easeInOut',
+                  onYoyo: () => {
+                      if (!this.scene.isActive()) return;
+                      
+                      let texKey = `${data.key}_ssj`;
+                      if (isUI || isUE || isKuramaMode) texKey = `${data.key}_ui`;
 
-              if(this.textures.exists(texKey)) {
-                  sprite.setTexture(texKey);
-                  if(this.anims.exists(`${texKey}_idle`)) sprite.play(`${texKey}_idle`);
+                      if(this.textures.exists(texKey)) {
+                          sprite.setTexture(texKey);
+                          const animKeyIdle = this.getAnimKey(data.key, nextLevel, 'idle');
+                          if(this.anims.exists(animKeyIdle)) sprite.play(animKeyIdle);
+                      }
+                      
+                      // Big Flash & Shake
+                      if (data.key === 'thukuna') {
+                          // Invert colors momentarily for an "impact frame" feel
+                          this.cameras.main.flash(800, 255, 0, 0, true);
+                          
+                          // Thukuna specific slash effects - make them sharper and cleaner
+                          for(let i=0; i<8; i++) {
+                              this.time.delayedCall(i * 60, () => {
+                                  if(!this.scene.isActive()) return;
+                                  const cx = sprite.x + Phaser.Math.Between(-100, 100);
+                                  const cy = sprite.y + Phaser.Math.Between(-150, 150);
+                                  const angle = Phaser.Math.Between(0, 360) * (Math.PI / 180);
+                                  const length = Phaser.Math.Between(100, 250);
+                                  
+                                  const slash = this.add.graphics().setDepth(15);
+                                  // White core with red outline for a sharp cursed energy slash
+                                  slash.lineStyle(6, 0xff0000, 0.8);
+                                  slash.beginPath();
+                                  slash.moveTo(cx - Math.cos(angle)*length/2, cy - Math.sin(angle)*length/2);
+                                  slash.lineTo(cx + Math.cos(angle)*length/2, cy + Math.sin(angle)*length/2);
+                                  slash.strokePath();
+                                  
+                                  slash.lineStyle(2, 0xffffff, 1);
+                                  slash.beginPath();
+                                  slash.moveTo(cx - Math.cos(angle)*length/2, cy - Math.sin(angle)*length/2);
+                                  slash.lineTo(cx + Math.cos(angle)*length/2, cy + Math.sin(angle)*length/2);
+                                  slash.strokePath();
+                                  
+                                  this.tweens.add({
+                                      targets: slash,
+                                      alpha: 0,
+                                      scale: 1.2,
+                                      duration: 150,
+                                      ease: 'Expo.easeOut',
+                                      onComplete: () => slash.destroy()
+                                  });
+                                  
+                                  if(this.cache.audio.exists('sfx_hit')) this.sound.play('sfx_hit', { volume: 0.3, rate: 1.5 });
+                              });
+                          }
+                          
+                          // Massive dark red aura burst (Domain Expansion style)
+                          const redBurst = this.add.circle(sprite.x, sprite.y, 5, 0x000000).setDepth(1);
+                          redBurst.setStrokeStyle(10, 0x8b0000);
+                          this.tweens.add({
+                              targets: redBurst,
+                              scale: 150,
+                              alpha: 0,
+                              strokeWidth: 0,
+                              duration: 1000,
+                              ease: 'Cubic.easeOut',
+                              onComplete: () => redBurst.destroy()
+                          });
+                      } else {
+                          this.cameras.main.flash(800, 255, 255, 255, true);
+                      }
+                      
+                      this.cameras.main.shake(1000, 0.05);
+                      if(this.cache.audio.exists('sfx_transform')) this.sound.play('sfx_transform', { volume: 1.5 });
+
+                      // Pillar Animation
+                      pillar.setAlpha(1).setScale(0, 1);
+                      this.tweens.add({
+                          targets: pillar,
+                          scaleX: 4,
+                          alpha: 0,
+                          duration: 1000,
+                          ease: 'Power2',
+                          onComplete: () => { if(this.scene.isActive()) pillar.destroy(); }
+                      });
+
+                      // Shockwave Rings (Multiple, expanding outwards)
+                      for (let i = 0; i < 4; i++) {
+                          this.time.delayedCall(i * 100, () => {
+                              if (!this.scene.isActive()) return;
+                              const ring = this.add.circle(sprite.x, sprite.y, 10, auraColor, 0)
+                                  .setStrokeStyle(8 - i * 1.5, ringColor)
+                                  .setDepth(2);
+                              this.tweens.add({
+                                  targets: ring,
+                                  scale: 30 + (i * 10),
+                                  alpha: { start: 1, end: 0 },
+                                  duration: 800,
+                                  ease: 'Cubic.easeOut',
+                                  onComplete: () => { if(this.scene.isActive()) ring.destroy(); }
+                              });
+                          });
+                      }
+
+                      // Update continuous charge aura color
+                      const chargeAura = isPlayer ? this.p1Aura : this.p2Aura;
+                      if (chargeAura && chargeAura.active) {
+                          (chargeAura as Phaser.GameObjects.Shape).setFillStyle(auraColor, 0.6);
+                      }
+
+                      // Intense particles bursting outwards
+                      for (let i = 0; i < 40; i++) {
+                          const angle = Phaser.Math.Between(0, 360) * (Math.PI / 180);
+                          const speed = Phaser.Math.Between(100, 400);
+                          const spark = this.add.circle(sprite.x, sprite.y, Phaser.Math.Between(3, 8), ringColor).setDepth(3);
+                          spark.setBlendMode(Phaser.BlendModes.ADD);
+                          
+                          this.tweens.add({
+                              targets: spark,
+                              x: spark.x + Math.cos(angle) * speed,
+                              y: spark.y + Math.sin(angle) * speed - Phaser.Math.Between(50, 150), // Upward bias
+                              alpha: 0,
+                              scale: 0,
+                              duration: Phaser.Math.Between(800, 1500),
+                              ease: 'Power2',
+                              onComplete: () => spark.destroy()
+                          });
+                      }
+                  },
+                  onComplete: () => {
+                      if(!this.scene.isActive()) return;
+                      // Remove darken overlay
+                      this.tweens.add({
+                          targets: darken,
+                          fillAlpha: 0,
+                          duration: 500,
+                          onComplete: () => {
+                              darken.destroy();
+                              this.setActionState(isPlayer, false);
+                          }
+                      });
+                      
+                      if (darkAuraElements.length > 0) {
+                          darkAuraElements.forEach(el => {
+                              this.tweens.add({
+                                  targets: el,
+                                  alpha: 0,
+                                  duration: 500,
+                                  onComplete: () => el.destroy()
+                              });
+                          });
+                      }
+                  }
+              });
+              
+              // Dramatic text display
+              let textFill = '#ffffff';
+              let textStroke = '#000000';
+              if (data.key === 'thukuna') {
+                  textFill = '#ff0000';
+                  textStroke = '#330000';
               }
               
-              // Big Flash
-              this.cameras.main.flash(400, 255, 230, 150, true);
-              this.cameras.main.shake(500, 0.03);
-              if(this.cache.audio.exists('sfx_transform')) this.sound.play('sfx_transform');
-
-              // Pillar Animation
-              pillar.setAlpha(1).setScale(0, 1);
+              const textObj = this.add.text(480, 200, transformText, {
+                  fontFamily: 'Impact, sans-serif',
+                  fontSize: '64px',
+                  color: textFill,
+                  stroke: textStroke,
+                  strokeThickness: 8,
+                  fontStyle: 'italic'
+              }).setOrigin(0.5).setDepth(10).setAlpha(0).setScale(0.5);
+              
               this.tweens.add({
-                  targets: pillar,
-                  scaleX: 2,
-                  alpha: 0,
-                  duration: 600,
-                  onComplete: () => { if(this.scene.isActive()) pillar.destroy(); }
+                  targets: textObj,
+                  alpha: 1,
+                  scale: 1.2,
+                  duration: 300,
+                  yoyo: true,
+                  hold: 1000,
+                  ease: 'Back.easeOut',
+                  onComplete: () => textObj.destroy()
               });
-
-              // Shockwave Ring
-              const ring = this.add.circle(sprite.x, sprite.y, 20, auraColor, 0)
-                  .setStrokeStyle(4, ringColor)
-                  .setDepth(2);
-              this.tweens.add({
-                  targets: ring,
-                  scale: 15,
-                  alpha: { start: 1, end: 0 },
-                  duration: 500,
-                  onComplete: () => { if(this.scene.isActive()) ring.destroy(); }
-              });
-
-              // Update continuous charge aura color
-              const chargeAura = isPlayer ? this.p1Aura : this.p2Aura;
-              if (chargeAura && chargeAura.active) {
-                  (chargeAura as Phaser.GameObjects.Shape).setFillStyle(auraColor, 0.5);
-              }
-
-              // Extra particles for specific transformations
-              if (data.key === 'gohan' || isUI || isUE) {
-                  for (let i = 0; i < 10; i++) {
-                      const spark = this.add.circle(sprite.x + Phaser.Math.Between(-30, 30), sprite.y + Phaser.Math.Between(-50, 50), 3, ringColor).setDepth(3);
-                      this.tweens.add({
-                          targets: spark,
-                          y: spark.y - Phaser.Math.Between(50, 150),
-                          alpha: 0,
-                          duration: Phaser.Math.Between(400, 800),
-                          onComplete: () => spark.destroy()
-                      });
-                  }
-              }
-          },
-          onComplete: () => {
-              if(this.scene.isActive()) this.setActionState(isPlayer, false);
+              
+              this.log(transformText);
           }
       });
-      this.log(transformText);
   }
 
   // --- ANIMATION SEQUENCE (FIXED: NO MOVEMENT) ---
-  animateCastSequence(attacker: Phaser.GameObjects.Sprite, isPlayer: boolean, tintColor: number, onFireCallback: () => void) {
-      attacker.anims.pause();
+  animateCastSequence(attacker: Phaser.GameObjects.Sprite, isPlayer: boolean, tintColor: number, animKeyAttack: string, animKeyIdle: string, onFireCallback: () => void) {
+      attacker.play(animKeyAttack);
 
       // FIXED: Removed x movement (targets: attacker, x: ...)
       // We only scale to show effort/charging. This prevents the beam from detaching or spawning behind.
@@ -729,7 +1093,7 @@ export default class BattleScene extends Phaser.Scene {
                       onComplete: () => {
                           if(!this.scene.isActive()) return;
                           attacker.clearTint();
-                          attacker.anims.resume();
+                          // Let onSpecialComplete handle returning to idle
                       }
                   });
               });
@@ -756,11 +1120,14 @@ export default class BattleScene extends Phaser.Scene {
           if (isSuper) this.specialMegaPancake(isPlayer);
           else this.specialPancake(isPlayer, false);
       } else {
-          this.animateCastSequence(sprite, isPlayer, data.specialColor, () => {
+          const transLevel = isPlayer ? this.playerTransformLevel : this.enemyTransformLevel;
+          const animKeyAttack = this.getAnimKey(data.key, transLevel, 'attack');
+          const animKeyIdle = this.getAnimKey(data.key, transLevel, 'idle');
+          this.animateCastSequence(sprite, isPlayer, data.specialColor, animKeyAttack, animKeyIdle, () => {
               switch(data.key) {
                   case 'goku':
                       if (isSuper) this.specialGenkidama(isPlayer);
-                      else this.specialBeam(isPlayer, false, 0x00ffff, true, false, 'kamehameha');
+                      else this.specialKamehameha(isPlayer);
                       break;
                   case 'vegeta': 
                       if (isSuper) this.specialFinalFlash(isPlayer);
@@ -810,6 +1177,10 @@ export default class BattleScene extends Phaser.Scene {
                       if (isSuper) this.specialTheDarkKnight(isPlayer);
                       else this.specialBatarang(isPlayer);
                       break;
+                  case 'thukuna':
+                      if (isSuper) this.specialMalevolentShrine(isPlayer);
+                      else this.specialCleave(isPlayer);
+                      break;
                   default: 
                       this.specialBeam(isPlayer, isSuper, data.specialColor, false, false, 'generic'); 
                       break;
@@ -819,6 +1190,13 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   private onSpecialComplete(isPlayer: boolean) {
+      const data = isPlayer ? this.playerData : this.enemyData;
+      const transLevel = isPlayer ? this.playerTransformLevel : this.enemyTransformLevel;
+      const animKeyIdle = this.getAnimKey(data.key, transLevel, 'idle');
+      const attacker = isPlayer ? this.player : this.enemy;
+
+      if(this.scene.isActive()) attacker.play(animKeyIdle);
+
       this.time.delayedCall(600, () => {
           if(this.scene.isActive()) this.setActionState(isPlayer, false);
       });
@@ -837,6 +1215,106 @@ export default class BattleScene extends Phaser.Scene {
       const xOffset = isPlayer ? 35 : -35; 
       const yOffset = 50; 
       return { x: sprite.x + xOffset, y: sprite.y + yOffset };
+  }
+
+  private specialKamehameha(isP: boolean) {
+      const attacker = isP ? this.player : this.enemy;
+      const target = isP ? this.enemy : this.player;
+      const transLevel = isP ? this.playerTransformLevel : this.enemyTransformLevel;
+      if(!attacker.active || !target.active) { this.setActionState(isP, false); return; }
+
+      const baseDmg = 35;
+      const dmg = Math.floor(baseDmg * this.getDamageMultiplier(transLevel));
+
+      const size = 1.8; 
+      
+      const hand = this.getHandPosition(isP);
+      const endX = target.x;
+      const distance = Math.abs(endX - hand.x);
+
+      // Muzzle Flash (Charge)
+      const muzzle = this.add.circle(hand.x, hand.y, 5, 0x00ffff).setDepth(7).setAlpha(0.8);
+      // Flash Tween
+      this.tweens.add({ targets: muzzle, scale: 6, alpha: 0.2, duration: 150, yoyo: true, repeat: 1 });
+      // Shake during charge
+      this.cameras.main.shake(100, 0.01);
+
+      this.log("KAMEHAMEHA!");
+      if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam');
+
+      // The Beam Structure
+      const originX = 0; 
+      
+      // Main Color Beam (outer cyan)
+      const beamMain = this.add.rectangle(hand.x, hand.y, 0, 24 * size, 0x00ffff).setOrigin(originX, 0.5).setDepth(5).setAlpha(0.9);
+      beamMain.scaleX = isP ? 1 : -1;
+      
+      // Inner Core (White/Bright)
+      const beamCore = this.add.rectangle(hand.x, hand.y, 0, 12 * size, 0xffffff).setOrigin(originX, 0.5).setDepth(6);
+      beamCore.scaleX = isP ? 1 : -1;
+      
+      // Beam Head/Tip
+      const beamHead = this.add.circle(hand.x, hand.y, 20 * size, 0xffffff).setDepth(6); 
+      
+      // Particles Emitter for Beam
+      const particles = this.add.particles(0, 0, 'particle', {
+          speed: 100,
+          scale: { start: 0.5 * size, end: 0 },
+          blendMode: 'ADD',
+          lifespan: 200,
+          tint: 0x00ffff
+      }).setDepth(4);
+
+      // Animation
+      this.tweens.add({
+          targets: [beamMain, beamCore],
+          width: distance, 
+          duration: 250,
+          ease: 'Linear',
+          onUpdate: () => {
+              if(!this.scene.isActive()) return;
+              
+              const shakeAmt = 1;
+              const jitterY = Phaser.Math.Between(-shakeAmt, shakeAmt);
+
+              beamMain.y = hand.y + jitterY;
+              beamCore.y = hand.y + jitterY;
+              
+              const currentWidth = beamMain.width;
+              const headX = isP ? hand.x + currentWidth : hand.x - currentWidth;
+              beamHead.setPosition(headX, hand.y + jitterY);
+              
+              particles.emitParticleAt(headX, hand.y + jitterY);
+          },
+          onComplete: () => {
+              this.takeDamage(!isP, dmg);
+              this.cameras.main.shake(300, 0.02);
+              
+              // Impact explosion
+              const explosion = this.add.circle(endX, hand.y, 40 * size, 0x00ffff).setDepth(8);
+              this.tweens.add({ targets: explosion, scale: 1.5, alpha: 0, duration: 200, onComplete: () => explosion.destroy() });
+
+              // Fade out beam
+              this.tweens.add({ 
+                  targets: [beamMain, beamCore, beamHead, muzzle].filter(Boolean), 
+                  alpha: 0, 
+                  duration: 200, 
+                  onComplete: () => { 
+                      beamMain.destroy(); 
+                      beamCore.destroy();
+                      beamHead.destroy();
+                      muzzle.destroy();
+                      particles.stop();
+                      this.time.delayedCall(200, () => particles.destroy());
+                      
+                      // Cooldown - slightly longer
+                      this.time.delayedCall(400, () => {
+                          if(this.scene.isActive()) this.setActionState(isP, false);
+                      });
+                  }
+              });
+          }
+      });
   }
 
   // =========================================================================
@@ -1256,12 +1734,15 @@ export default class BattleScene extends Phaser.Scene {
       const startY = isP ? this.p1StartPos.y : this.p2StartPos.y;
       const target = isP ? this.enemy : this.player;
       const transLevel = isP ? this.playerTransformLevel : this.enemyTransformLevel;
+      const attackerData = isP ? this.playerData : this.enemyData;
       const baseDmg = isS ? 80 : 50;
       const dmg = Math.floor(baseDmg * this.getDamageMultiplier(transLevel));
 
       this.log("PANCAKES!");
       
-      attacker.anims.pause();
+      const animKeyAttack = this.getAnimKey(attackerData.key, transLevel, 'attack');
+      const animKeyIdle = this.getAnimKey(attackerData.key, transLevel, 'idle');
+      attacker.play(animKeyAttack);
       
       // Shadow looming over target
       const shadow = this.add.ellipse(target.x, target.y + 30, 10, 5, 0x000000, 0.5);
@@ -1300,8 +1781,7 @@ export default class BattleScene extends Phaser.Scene {
                                 y: startY,
                                 duration: 300,
                                 onComplete: () => {
-                                    attacker.anims.resume();
-                                    this.setActionState(isP, false);
+                                    this.onSpecialComplete(isP);
                                 }
                             });
                           }
@@ -1480,7 +1960,11 @@ export default class BattleScene extends Phaser.Scene {
       if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam');
 
       // Ghost Goku (Visual representation)
-      const ghost = this.add.sprite(attacker.x + (isP ? -30 : 30), attacker.y - 40, 'goku_ssj').setAlpha(0).setScale(3).setDepth(0);
+      const ghost = this.add.sprite(attacker.x + (isP ? -30 : 30), attacker.y - 40, 'goku_ssj')
+          .setOrigin(0.5, 0.5)
+          .setAlpha(0)
+          .setScale(3)
+          .setDepth(0);
       ghost.setFlipX(!isP);
       this.tweens.add({ targets: ghost, alpha: 0.5, duration: 500 });
 
@@ -1782,13 +2266,16 @@ export default class BattleScene extends Phaser.Scene {
       const attacker = isP ? this.player : this.enemy;
       const target = isP ? this.enemy : this.player;
       const transLevel = isP ? this.playerTransformLevel : this.enemyTransformLevel;
+      const attackerData = isP ? this.playerData : this.enemyData;
       const dmg = Math.floor(130 * this.getDamageMultiplier(transLevel));
       const startX = attacker.x;
       const startY = attacker.y;
 
       this.log("MEGA PANCAKE!");
       
-      attacker.anims.pause();
+      const animKeyAttack = this.getAnimKey(attackerData.key, transLevel, 'attack');
+      const animKeyIdle = this.getAnimKey(attackerData.key, transLevel, 'idle');
+      attacker.play(animKeyAttack);
       
       // Shadow looming over target
       const shadow = this.add.ellipse(target.x, target.y + 30, 10, 5, 0x000000, 0.5);
@@ -1817,6 +2304,7 @@ export default class BattleScene extends Phaser.Scene {
                       pancake.destroy();
                       butter.destroy();
                       shadow.destroy();
+                      attacker.play(animKeyIdle);
                       this.onSpecialComplete(isP);
                   }
               });
@@ -2181,7 +2669,9 @@ export default class BattleScene extends Phaser.Scene {
           this.time.delayedCall(i * 150, () => {
               if(!this.scene.isActive()) return;
               
-              const batarang = this.add.sprite(hand.x, hand.y, 'batarang').setDepth(15);
+              const batarang = this.add.sprite(hand.x, hand.y, 'batarang')
+                  .setOrigin(0.5, 0.5)
+                  .setDepth(15);
               
               // Spin animation
               this.tweens.add({
@@ -2274,24 +2764,162 @@ export default class BattleScene extends Phaser.Scene {
       });
   }
 
-  createImpactEffect(x: number, y: number, color: number) {
-      // Main Flash
-      const boom = this.add.circle(x, y, 10, color).setDepth(20);
-      this.tweens.add({ targets: boom, scale: 4, alpha: 0, duration: 300, onComplete: () => boom.destroy() });
+  private specialCleave(isP: boolean) {
+      const attacker = isP ? this.player : this.enemy;
+      const target = isP ? this.enemy : this.player;
+      const transLevel = isP ? this.playerTransformLevel : this.enemyTransformLevel;
+      const dmg = Math.floor(45 * this.getDamageMultiplier(transLevel));
+      const hand = this.getHandPosition(isP);
+
+      this.log("CLEAVE!");
+      if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack');
+
+      // Create invisible slash effect
+      const slash = this.add.graphics().setDepth(15);
+      slash.lineStyle(4, 0xff0000, 0.8);
+      slash.beginPath();
+      slash.moveTo(target.x - 30, target.y - 30);
+      slash.lineTo(target.x + 30, target.y + 30);
+      slash.strokePath();
       
-      // Debris / Sparks
-      for(let i=0; i<12; i++) { // More particles
-          const p = this.add.rectangle(x, y, 5, 5, color).setDepth(20);
+      const slash2 = this.add.graphics().setDepth(15);
+      slash2.lineStyle(4, 0xff0000, 0.8);
+      slash2.beginPath();
+      slash2.moveTo(target.x + 30, target.y - 30);
+      slash2.lineTo(target.x - 30, target.y + 30);
+      slash2.strokePath();
+
+      this.tweens.add({
+          targets: [slash, slash2],
+          alpha: 0,
+          scale: 1.5,
+          duration: 300,
+          onComplete: () => {
+              slash.destroy();
+              slash2.destroy();
+              this.createImpactEffect(target.x, target.y, 0xff0000);
+              this.takeDamage(!isP, dmg);
+              this.onSpecialComplete(isP);
+          }
+      });
+  }
+
+  private specialMalevolentShrine(isP: boolean) {
+      const attacker = isP ? this.player : this.enemy;
+      const target = isP ? this.enemy : this.player;
+      const transLevel = isP ? this.playerTransformLevel : this.enemyTransformLevel;
+      const dmg = Math.floor(140 * this.getDamageMultiplier(transLevel));
+
+      this.log("CASTELO MANIVOLENTE!");
+      
+      // Screen goes dark red
+      const darkOverlay = this.add.rectangle(this.cameras.main.width/2, this.cameras.main.height/2, this.cameras.main.width, this.cameras.main.height, 0x8b0000, 0).setDepth(10);
+      
+      this.tweens.add({
+          targets: darkOverlay,
+          fillAlpha: 0.6,
+          duration: 500,
+          onComplete: () => {
+              if(!this.scene.isActive()) return;
+              
+              // Shrine visual (a giant skull/shrine representation behind attacker)
+              const shrine = this.add.graphics().setDepth(9);
+              shrine.fillStyle(0x000000, 0.8);
+              shrine.fillRect(attacker.x - 50, attacker.y - 150, 100, 150);
+              shrine.fillStyle(0xff0000, 1);
+              shrine.fillCircle(attacker.x, attacker.y - 100, 20); // Eye/Core
+              
+              this.cameras.main.shake(1500, 0.02);
+
+              // Relentless slashes
+              for(let i=0; i<15; i++) {
+                  this.time.delayedCall(i * 100, () => {
+                      if(!this.scene.isActive()) return;
+                      const cx = target.x + Phaser.Math.Between(-40, 40);
+                      const cy = target.y + Phaser.Math.Between(-50, 50);
+                      
+                      const slash = this.add.graphics().setDepth(15);
+                      slash.lineStyle(2, 0xffffff, 0.9);
+                      slash.beginPath();
+                      slash.moveTo(cx - 20, cy - 20);
+                      slash.lineTo(cx + 20, cy + 20);
+                      slash.strokePath();
+                      
+                      this.tweens.add({
+                          targets: slash,
+                          alpha: 0,
+                          duration: 200,
+                          onComplete: () => slash.destroy()
+                      });
+
+                      this.createImpactEffect(cx, cy, 0xff0000);
+                      if(this.cache.audio.exists('sfx_hit')) this.sound.play('sfx_hit');
+                  });
+              }
+
+              this.time.delayedCall(1600, () => {
+                  if(!this.scene.isActive()) return;
+                  
+                  // Final massive slash
+                  this.createImpactEffect(target.x, target.y, 0xff0000);
+                  this.cameras.main.flash(500, 255, 0, 0);
+                  this.cameras.main.shake(500, 0.08);
+                  this.takeDamage(!isP, dmg);
+                  
+                  // Fade out domain
+                  this.tweens.add({
+                      targets: [darkOverlay, shrine],
+                      alpha: 0,
+                      duration: 500,
+                      onComplete: () => {
+                          darkOverlay.destroy();
+                          shrine.destroy();
+                          this.onSpecialComplete(isP);
+                      }
+                  });
+              });
+          }
+      });
+  }
+
+  createImpactEffect(x: number, y: number, color: number) {
+      // Main Flash - Make it bigger and punchier
+      const boom = this.add.circle(x, y, 20, color).setDepth(20);
+      this.tweens.add({ 
+          targets: boom, 
+          scale: 6, 
+          alpha: 0, 
+          duration: 250, 
+          ease: 'Cubic.easeOut',
+          onComplete: () => boom.destroy() 
+      });
+      
+      // Add an inner white core for more impact
+      const core = this.add.circle(x, y, 10, 0xffffff).setDepth(21);
+      this.tweens.add({ 
+          targets: core, 
+          scale: 4, 
+          alpha: 0, 
+          duration: 150, 
+          ease: 'Cubic.easeOut',
+          onComplete: () => core.destroy() 
+      });
+      
+      // Debris / Sparks - Faster and more dynamic
+      for(let i=0; i<16; i++) { 
+          const p = this.add.rectangle(x, y, 6, 6, color).setDepth(20);
           const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-          const dist = Phaser.Math.Between(40, 100);
+          const dist = Phaser.Math.Between(60, 150);
           
           this.tweens.add({
               targets: p,
               x: x + Math.cos(angle) * dist,
               y: y + Math.sin(angle) * dist,
               alpha: 0,
-              scale: 0.2,
-              duration: 500,
+              scale: 0.1,
+              rotation: Phaser.Math.FloatBetween(-Math.PI, Math.PI),
+              duration: Phaser.Math.Between(300, 600),
+              ease: 'Quad.easeOut',
               onComplete: () => p.destroy()
           });
       }
@@ -2301,22 +2929,43 @@ export default class BattleScene extends Phaser.Scene {
       if(this.isBattleOver || !this.scene.isActive()) return;
       
       const def = isP ? this.playerDefending : this.enemyDefending;
+      const target = isP ? this.player : this.enemy;
+      
       if(def) {
           dmg = Math.floor(dmg * 0.3);
           // Block effect
-          const target = isP ? this.player : this.enemy;
           this.createImpactEffect(target.x, target.y, 0x3498db); // Blue shield spark
           if(this.cache.audio.exists('sfx_block')) this.sound.play('sfx_block');
+          this.cameras.main.shake(100, 0.01); // Light shake for block
       } else {
           if(this.cache.audio.exists('sfx_hit')) this.sound.play('sfx_hit');
+          
+          // Stronger shake and flash for hit
+          this.cameras.main.shake(200, 0.03); 
+          this.cameras.main.flash(50, 255, 255, 255, true); 
+          
+          // Hit pause (time freeze) for impact
+          this.tweens.timeScale = 0;
+          if (this.player.anims && this.player.anims.isPlaying) this.player.anims.pause();
+          if (this.enemy.anims && this.enemy.anims.isPlaying) this.enemy.anims.pause();
+          
+          setTimeout(() => {
+              if (this.scene && this.scene.isActive()) {
+                  this.tweens.timeScale = 1;
+                  if (this.player.anims && !this.player.anims.isPlaying) this.player.anims.resume();
+                  if (this.enemy.anims && !this.enemy.anims.isPlaying) this.enemy.anims.resume();
+              }
+          }, 60); // 60ms real-time freeze
       }
       
       if(isP) this.playerHp = Math.max(0, this.playerHp - dmg);
       else this.enemyHp = Math.max(0, this.enemyHp - dmg);
       
-      const target = isP ? this.player : this.enemy;
       if(target.active) {
-          target.setTint(0xff0000);
+          target.setTintFill(0xffffff); // Initial white flash
+          this.time.delayedCall(40, () => {
+              if(target.active) target.setTint(0xff0000); // Then red
+          });
           
           // Knockback / Shake effect
           const originalX = target.x;
@@ -2328,7 +2977,7 @@ export default class BattleScene extends Phaser.Scene {
           this.tweens.add({
               targets: target,
               x: originalX + knockbackDir,
-              rotation: rotDir,
+              rotation: def ? 0 : rotDir,
               yoyo: true,
               duration: def ? 50 : 100,
               repeat: def ? 1 : 0,
@@ -2475,36 +3124,119 @@ export default class BattleScene extends Phaser.Scene {
       if(this.turnTimer) this.turnTimer.remove();
       if(this.regenTimer) this.regenTimer.remove();
       
-      this.add.rectangle(480, 270, 960, 540, 0x000000, 0.7).setDepth(20);
+      this.add.rectangle(480, 270, 960, 540, 0x000000, 0.8).setDepth(20);
       
-      let message = "DEFEAT...";
-      let color = '#f00';
+      let titleMessage = "DEFEAT...";
+      let subtitleMessage = "";
+      let color = '#e74c3c'; // Red
+      let coinsEarned = 0;
       
       if (this.gameState.gameMode === 'local_pvp') {
           // PvP Outcome
+          coinsEarned = 100;
+          titleMessage = "CONGRATULATIONS!";
+          color = '#f1c40f'; // Gold
           if (win) { // P1 Wins
-              message = "PLAYER 1 WINS!";
-              color = '#3498db'; // Blue
+              subtitleMessage = `${this.playerData.name.toUpperCase()} WINS!`;
           } else { // P2 Wins
-              message = "PLAYER 2 WINS!";
-              color = '#e74c3c'; // Red
+              subtitleMessage = `${this.enemyData.name.toUpperCase()} WINS!`;
           }
           // Award coins in PvP regardless of who won (shared stash)
-          this.gameState.coins += 100;
+          this.gameState.coins += coinsEarned;
           window.UTLW.save();
       } else {
           // Single Player Outcome
           if (win) {
-              message = "VICTORY!";
-              color = '#0f0';
-              this.gameState.coins += 100; 
+              titleMessage = "CONGRATULATIONS!";
+              subtitleMessage = `${this.playerData.name.toUpperCase()} WINS!`;
+              color = '#f1c40f'; // Gold
+              coinsEarned = 100;
+              this.gameState.coins += coinsEarned; 
+              window.UTLW.save();
+          } else {
+              titleMessage = "DEFEAT...";
+              subtitleMessage = `${this.enemyData.name.toUpperCase()} WINS!`;
+              color = '#e74c3c'; // Red
+              coinsEarned = 25; // Small consolation prize
+              this.gameState.coins += coinsEarned;
               window.UTLW.save();
           }
       }
 
-      this.add.text(480, 200, message, { fontSize: '64px', color: color }).setOrigin(0.5).setDepth(21);
+      // Display Title
+      const titleText = this.add.text(480, -100, titleMessage, { 
+          fontFamily: 'Impact, sans-serif',
+          fontSize: '80px', 
+          color: color, 
+          fontStyle: 'italic',
+          stroke: '#000',
+          strokeThickness: 8
+      }).setOrigin(0.5).setDepth(21);
       
-      const btn = this.add.text(480, 350, "RETURN TO MENU", { fontSize: '32px' }).setOrigin(0.5).setDepth(21).setInteractive({ useHandCursor: true });
+      this.tweens.add({
+          targets: titleText,
+          y: 160,
+          duration: 800,
+          ease: 'Bounce.easeOut'
+      });
+      
+      // Display Subtitle (Winner Name)
+      if (subtitleMessage) {
+          const subText = this.add.text(480, 260, subtitleMessage, { 
+              fontFamily: 'Impact, sans-serif',
+              fontSize: '56px', 
+              color: '#ffffff',
+              stroke: '#000',
+              strokeThickness: 6
+          }).setOrigin(0.5).setDepth(21).setAlpha(0).setScale(0.5);
+          
+          this.tweens.add({
+              targets: subText,
+              alpha: 1,
+              scale: 1,
+              duration: 500,
+              delay: 600,
+              ease: 'Back.easeOut'
+          });
+      }
+
+      // Display Coins Earned
+      if (coinsEarned > 0) {
+          const coinText = this.add.text(480, 340, `REWARD: +${coinsEarned} COINS`, { 
+              fontFamily: 'Impact, sans-serif',
+              fontSize: '48px', 
+              color: '#f1c40f',
+              stroke: '#000',
+              strokeThickness: 6
+          }).setOrigin(0.5).setDepth(21).setAlpha(0);
+          
+          this.tweens.add({
+              targets: coinText,
+              alpha: 1,
+              y: 360,
+              duration: 400,
+              delay: 1100,
+              ease: 'Power2'
+          });
+      }
+      
+      const btn = this.add.text(480, 480, "RETURN TO MENU", { 
+          fontFamily: 'Impact, sans-serif',
+          fontSize: '36px',
+          color: '#ffffff',
+          backgroundColor: '#333333',
+          padding: { x: 20, y: 10 }
+      }).setOrigin(0.5).setDepth(21).setInteractive({ useHandCursor: true }).setAlpha(0);
+      
+      this.tweens.add({
+          targets: btn,
+          alpha: 1,
+          duration: 400,
+          delay: 1500
+      });
+      
+      btn.on('pointerover', () => btn.setStyle({ color: '#f1c40f' }));
+      btn.on('pointerout', () => btn.setStyle({ color: '#ffffff' }));
       btn.on('pointerdown', () => this.scene.start('MenuScene'));
   }
 }

@@ -32,20 +32,20 @@ export default class CharacterSelectScene extends Phaser.Scene {
     this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.6);
 
     // Botão Voltar
-    const backBtn = this.add.text(50, 40, '← VOLTAR', { fontSize: '20px', fontStyle: 'bold' })
+    const backBtn = this.add.text(30, 30, '← VOLTAR', { fontSize: '16px', fontStyle: 'bold' })
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => this.scene.start('MenuScene'));
 
     // Header
-    this.headerText = this.add.text(width / 2, 60, '', {
-        fontSize: '32px',
+    this.headerText = this.add.text(width / 2, 40, '', {
+        fontSize: '24px',
         color: '#ffd54a',
         fontStyle: 'bold',
         stroke: '#000',
         strokeThickness: 4
     }).setOrigin(0.5);
 
-    this.charContainer = this.add.container(width / 2, 260);
+    this.charContainer = this.add.container(width / 2, 220);
     
     // Botão de Luta (Escondido até selecionar)
     this.createFightButton();
@@ -55,10 +55,10 @@ export default class CharacterSelectScene extends Phaser.Scene {
 
   createFightButton() {
     const { width, height } = this.cameras.main;
-    this.fightBtn = this.add.container(width / 2, height - 80).setVisible(false);
+    this.fightBtn = this.add.container(width / 2, height - 50).setVisible(false);
     
-    const bg = this.add.rectangle(0, 0, 240, 60, 0x27ae60).setStrokeStyle(3, 0xffffff);
-    const txt = this.add.text(0, 0, 'LUTAR!', { fontSize: '28px', fontStyle: 'bold' }).setOrigin(0.5);
+    const bg = this.add.rectangle(0, 0, 200, 50, 0x27ae60).setStrokeStyle(3, 0xffffff);
+    const txt = this.add.text(0, 0, 'LUTAR!', { fontSize: '22px', fontStyle: 'bold' }).setOrigin(0.5);
     
     this.fightBtn.add([bg, txt]);
     bg.setInteractive({ useHandCursor: true })
@@ -91,9 +91,9 @@ export default class CharacterSelectScene extends Phaser.Scene {
       this.charContainer.removeAll(true);
       const unlockedChars = this.state.characters.filter(c => c.unlocked);
       
-      const cardSize = 90;
-      const gap = 15;
-      const itemsPerRow = 7;
+      const cardSize = 70;
+      const gap = 10;
+      const itemsPerRow = 8;
       const totalWidth = (itemsPerRow * cardSize) + ((itemsPerRow - 1) * gap);
       const startX = -(totalWidth / 2) + (cardSize / 2);
 
@@ -101,7 +101,7 @@ export default class CharacterSelectScene extends Phaser.Scene {
           const col = index % itemsPerRow;
           const row = Math.floor(index / itemsPerRow);
           const x = startX + (col * (cardSize + gap));
-          const y = (row * (cardSize + 30));
+          const y = (row * (cardSize + 20));
 
           const isP1 = this.state.p1CharacterId === char.id;
           const isP2 = this.state.p2CharacterId === char.id && this.state.gameMode === 'local_pvp';
@@ -116,7 +116,7 @@ export default class CharacterSelectScene extends Phaser.Scene {
 
           // GLOW EFFECT
           if (isSelected) {
-              const glow = this.add.rectangle(0, 0, cardSize + 12, cardSize + 12, strokeColor)
+              const glow = this.add.rectangle(0, 0, cardSize + 8, cardSize + 8, strokeColor)
                   .setAlpha(0.2)
                   .setDepth(-1); 
               
@@ -137,19 +137,19 @@ export default class CharacterSelectScene extends Phaser.Scene {
               .setStrokeStyle(isSelected ? 3 : 2, strokeColor);
 
           // Correctly center the sprite (Mask removed to prevent visibility issues)
-          const sprite = this.add.sprite(0, -48, char.key, 0)
-              .setScale(1.3);
+          const sprite = this.add.sprite(0, -35, char.key, 0)
+              .setScale(1.0);
 
-          const nameTxt = this.add.text(0, cardSize/2 - 12, char.name, {
-              fontSize: '12px',
+          const nameTxt = this.add.text(0, cardSize/2 - 10, char.name, {
+              fontSize: '10px',
               fontStyle: 'bold',
               color: isSelected ? '#fff' : '#aaa'
           }).setOrigin(0.5);
 
           card.add([bg, sprite, nameTxt]);
 
-          if (isP1) card.add(this.add.text(0, -cardSize/2 - 15, 'P1', { fontSize: '18px', color: '#3498db', fontStyle: 'bold' }).setOrigin(0.5));
-          if (isP2) card.add(this.add.text(0, -cardSize/2 - 15, 'P2', { fontSize: '18px', color: '#e74c3c', fontStyle: 'bold' }).setOrigin(0.5));
+          if (isP1) card.add(this.add.text(0, -cardSize/2 - 12, 'P1', { fontSize: '14px', color: '#3498db', fontStyle: 'bold' }).setOrigin(0.5));
+          if (isP2) card.add(this.add.text(0, -cardSize/2 - 12, 'P2', { fontSize: '14px', color: '#e74c3c', fontStyle: 'bold' }).setOrigin(0.5));
 
           bg.setInteractive({ useHandCursor: true })
              .on('pointerdown', () => this.selectCharacter(char.id))

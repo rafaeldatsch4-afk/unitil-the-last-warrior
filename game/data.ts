@@ -211,5 +211,20 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     specialName: "BATARANG",
     superName: "THE DARK KNIGHT",
     specialColor: 0x34495e
+  },
+  {
+    id: 14,
+    key: "thukuna",
+    name: "Thukuna",
+    price: 2000,
+    unlocked: true,
+    maxHp: 260,
+    transformAvailable: true,
+    sprite: "",
+    frameWidth: 64,
+    frameHeight: 64,
+    specialName: "CLEAVE",
+    superName: "CASTELO MANIVOLENTE",
+    specialColor: 0x8b0000
   }
 ];

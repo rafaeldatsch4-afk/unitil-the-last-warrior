@@ -22,6 +22,13 @@ const GameCanvas: React.FC = () => {
 
     return () => {
       if (gameRef.current) {
+        // Prevent AudioContext errors during HMR/unmount by disabling pause on blur
+        if (gameRef.current.sound) {
+          gameRef.current.sound.pauseOnBlur = false;
+        }
+        // Remove visibility listeners to prevent AudioContext errors after destruction
+        gameRef.current.events.off('hidden');
+        gameRef.current.events.off('visible');
         gameRef.current.destroy(true);
         gameRef.current = null;
       }
@@ -32,7 +39,7 @@ const GameCanvas: React.FC = () => {
     <div 
       ref={containerRef} 
       id="game-container" 
-      className="w-full h-full bg-black"
+      className="w-full h-full bg-[#071026]"
     />
   );
 };
