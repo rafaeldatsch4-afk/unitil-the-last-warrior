@@ -110,6 +110,17 @@ export default class PreloadScene extends Phaser.Scene {
     p.generateTexture('particle', 16, 16);
     p.destroy();
 
+    // Massive Beam (Father-Son Kamehameha)
+    const mb = this.make.graphics({ x: 0, y: 0 });
+    // Core
+    mb.fillStyle(0xffffff, 1);
+    mb.fillRect(0, 10, 128, 44);
+    // Outer Aura
+    mb.fillStyle(0x00ffff, 0.6);
+    mb.fillRect(0, 0, 128, 64);
+    mb.generateTexture('massive_beam', 128, 64);
+    mb.destroy();
+
     // Mechanical Spark (For Optimus)
     const sp = this.make.graphics({ x: 0, y: 0 });
     sp.fillStyle(0xffaa00, 1); sp.fillRect(0, 0, 4, 4);
@@ -254,28 +265,16 @@ export default class PreloadScene extends Phaser.Scene {
         
         const dot = (x: number, y: number, color: number) => {
             const finalY = (y < 22) ? y + breatheOffset : y;
-            const finalX = isAttack && y >= 14 && y <= 24 ? x + attackOffsetX : x; // Only shift arms/torso slightly
-            const finalYAttack = isAttack && y >= 14 && y <= 24 ? finalY + attackOffsetY : finalY;
+            const finalX = isAttack ? x + attackOffsetX / 2 : x;
+            const finalYAttack = isAttack ? finalY + attackOffsetY / 2 : finalY;
             canvas.fillStyle(color, 1);
             canvas.fillRect((offsetX + finalX) * SCALE, (finalYAttack + DRAW_OFFSET_Y) * SCALE, SCALE, SCALE);
         };
 
         const box = (x: number, y: number, w: number, h: number, color: number) => {
             const finalY = (y < 22) ? y + breatheOffset : y;
-            // For attack frames, shift the arms forward (x > 18 or x < 10)
-            let finalX = x;
-            let finalYAttack = finalY;
-            if (isAttack) {
-                if (x >= 18 && y >= 14 && y <= 24) { // Right arm punches forward
-                    finalX += attackOffsetX * 2;
-                    finalYAttack += attackOffsetY;
-                } else if (x <= 10 && y >= 14 && y <= 24) { // Left arm pulls back
-                    finalX -= attackOffsetX;
-                } else if (y < 14) { // Head leans forward
-                    finalX += attackOffsetX / 2;
-                    finalYAttack += attackOffsetY / 2;
-                }
-            }
+            const finalX = isAttack ? x + attackOffsetX / 2 : x;
+            const finalYAttack = isAttack ? finalY + attackOffsetY / 2 : finalY;
             canvas.fillStyle(color, 1);
             canvas.fillRect((offsetX + finalX) * SCALE, (finalYAttack + DRAW_OFFSET_Y) * SCALE, w * SCALE, h * SCALE);
         };
@@ -796,132 +795,119 @@ export default class PreloadScene extends Phaser.Scene {
                         drawAura(2, -5, 2, 10); drawAura(4, 2, 6, 2);
                         drawAura(26, 25, 2, 12); drawAura(20, 31, 8, 2);
                     }
+                    
+                    // Subtle purple/white aura particles
+                    canvas.fillStyle(0xffffff, 0.9);
+                    if (f % 4 === 0) {
+                        drawAura(-5, 5, 3, 3); drawAura(35, -15, 3, 3); drawAura(15, -50, 3, 3);
+                    } else if (f % 4 === 2) {
+                        drawAura(-8, -25, 3, 3); drawAura(40, 15, 3, 3); drawAura(10, -45, 3, 3);
+                    }
+                    canvas.fillStyle(0xddaaff, 0.9);
+                    if (f % 5 === 0) {
+                        drawAura(8, -10, 3, 3); drawAura(30, -30, 3, 3); drawAura(25, -55, 3, 3);
+                    } else if (f % 5 === 2) {
+                        drawAura(-10, -15, 3, 3); drawAura(35, 5, 3, 3); drawAura(12, -52, 3, 3);
+                    }
                 }
 
+                // --- BODY ---
                 // Legs
-                box(10, 23, 5, 7, GI_PURPLE); box(17, 23, 5, 7, GI_PURPLE);
-                box(11, 23, 3, 7, GI_SHADOW); box(18, 23, 3, 7, GI_SHADOW); // Leg folds
-                // Extra leg folds
-                box(10, 24, 1, 5, GI_SHADOW); box(21, 24, 1, 5, GI_SHADOW);
-                box(12, 25, 1, 4, GI_SHADOW); box(19, 25, 1, 4, GI_SHADOW); // Inner leg shadow
-                
-                // Shoes
-                box(9, 30, 6, 2, SHOE_BROWN); box(17, 30, 6, 2, SHOE_BROWN);
-                box(9, 30, 6, 1, 0xa1887f); box(17, 30, 6, 1, 0xa1887f); // Shoe highlight
-                // Shoe shading
-                box(9, 31, 6, 1, 0x5d4037); box(17, 31, 6, 1, 0x5d4037);
-                box(9, 32, 6, 1, 0x3e2723); box(17, 32, 6, 1, 0x3e2723); // Sole shadow
-                
+                box(10, 23, 4, 6, GI_PURPLE); box(18, 23, 4, 6, GI_PURPLE);
+                // Gi folds on legs
+                box(10, 23, 1, 6, GI_SHADOW); box(21, 23, 1, 6, GI_SHADOW);
+                box(12, 24, 1, 4, GI_SHADOW); box(19, 24, 1, 4, GI_SHADOW);
+                // Shoes (Brown)
+                box(10, 29, 4, 3, SHOE_BROWN); box(18, 29, 4, 3, SHOE_BROWN);
+                box(10, 29, 4, 1, 0xa1887f); box(18, 29, 4, 1, 0xa1887f); // Shoe highlight
+                box(10, 31, 4, 1, 0x3e2723); box(18, 31, 4, 1, 0x3e2723); // Sole
+                // Shoe shadows
+                box(10, 30, 1, 2, 0x5d4037); box(18, 30, 1, 2, 0x5d4037);
+
                 // Torso
                 box(11, 14, 10, 9, GI_PURPLE);
-                box(12, 15, 8, 7, GI_SHADOW); // Chest shading
+                box(14, 14, 4, 2, SKIN); // Neck/Chest opening
+                // Neck shadow
+                box(14, 15, 4, 1, 0xe0ac7d);
+                dot(15, 16, SKIN); // V-neck dip
                 // Gi folds on torso
-                box(11, 16, 1, 6, GI_SHADOW); box(20, 16, 1, 6, GI_SHADOW);
-                box(14, 17, 1, 5, GI_SHADOW); box(17, 17, 1, 5, GI_SHADOW);
-                box(12, 18, 8, 1, GI_SHADOW); // Horizontal fold
+                box(19, 17, 2, 6, GI_SHADOW); // Shading right
+                box(11, 17, 1, 5, GI_SHADOW); // Shading left
+                box(14, 18, 1, 4, GI_SHADOW); box(17, 18, 1, 4, GI_SHADOW); // Inner folds
+                box(12, 19, 8, 1, GI_SHADOW); // Horizontal fold
+
+                // Sash with knot (Red)
+                box(11, 22, 10, 2, SASH_RED);
+                // Sash shadow
+                box(11, 23, 10, 1, SASH_SHADOW);
+                const knotY = (f % 2 === 0) ? 23 : 24; 
+                box(11, 23, 2, 4, SASH_RED); dot(12, 27, SASH_RED);
+                box(11, 24, 1, 3, SASH_SHADOW); // Knot shadow
+
+                // Arms (Wristbands)
+                box(8, 14, 3, 4, GI_PURPLE); box(21, 14, 3, 4, GI_PURPLE);
+                // Shoulder gi folds
+                box(8, 15, 1, 3, GI_SHADOW); box(23, 15, 1, 3, GI_SHADOW);
                 
-                // Sash
-                box(10, 21, 12, 3, SASH_RED);
-                box(10, 22, 12, 1, 0xe74c3c); // Sash highlight
-                box(10, 23, 12, 1, SASH_SHADOW);
-                box(10, 22, 2, 4, SASH_RED); // Sash knot hanging
-                box(10, 23, 1, 3, SASH_SHADOW); // Knot shadow
+                box(8, 18, 3, 3, SKIN); box(21, 18, 3, 3, SKIN);
+                // Arm muscle shading
+                box(8, 18, 1, 3, 0xe0ac7d); box(23, 18, 1, 3, 0xe0ac7d);
+                box(9, 19, 1, 2, 0xe0ac7d); box(22, 19, 1, 2, 0xe0ac7d); // Bicep definition
                 
-                // Arms
-                box(7, 15, 4, 4, SKIN); box(21, 15, 4, 4, SKIN); // Shoulders/Biceps
-                box(7, 19, 3, 3, SKIN); box(22, 19, 3, 3, SKIN); // Forearms
-                // Arm shading
-                box(7, 16, 1, 3, 0xe0ac7d); box(24, 16, 1, 3, 0xe0ac7d); // Bicep shadow
-                box(8, 17, 1, 2, 0xe0ac7d); box(23, 17, 1, 2, 0xe0ac7d); // Bicep definition
-                box(7, 19, 1, 2, 0xe0ac7d); box(24, 19, 1, 2, 0xe0ac7d); // Forearm shadow
-                
-                // Wristbands
-                box(7, 21, 3, 2, WRISTBAND_BLUE); box(22, 21, 3, 2, WRISTBAND_BLUE);
+                box(8, 20, 3, 3, WRISTBAND_BLUE); box(21, 20, 3, 3, WRISTBAND_BLUE); // Wristband
                 // Wristband shadow
-                box(7, 21, 1, 2, 0x154360); box(24, 21, 1, 2, 0x154360);
+                box(8, 20, 1, 3, 0x154360); box(23, 20, 1, 3, 0x154360);
                 
-                // Hands
-                box(7, 23, 3, 2, SKIN); box(22, 23, 3, 2, SKIN);
+                box(8, 23, 3, 2, SKIN); box(21, 23, 3, 2, SKIN); // Hands
                 // Knuckles
-                box(7, 24, 3, 1, 0xe0ac7d); box(22, 24, 3, 1, 0xe0ac7d);
-                
-                headBox(12, 6, 8, 7, SKIN); 
+                box(8, 24, 3, 1, 0xe0ac7d); box(21, 24, 3, 1, 0xe0ac7d);
+
+                // Head
+                headBox(12, 6, 8, 7, SKIN);
                 headDot(11, 9, SKIN); headDot(20, 9, SKIN); // Ears
                 headDot(11, 10, 0xe0ac7d); headDot(20, 10, 0xe0ac7d); // Ear shadows
                 // Face shading
                 headBox(12, 7, 1, 5, 0xe0ac7d); headBox(19, 7, 1, 5, 0xe0ac7d); // Side shadows
                 headBox(13, 12, 6, 1, 0xe0ac7d); // Jaw shadow
+
+                // Eyes
+                headBox(12, 9, 3, 2, WHITE); headBox(17, 9, 3, 2, WHITE); 
+                headDot(13, 9, WHITE); headDot(17, 9, WHITE); 
+                headDot(14, 9, eyeColor); headDot(17, 9, eyeColor); 
                 
                 if (isTransformed) {
-                    // Fierce Piercing Red Eyes
-                    headBox(12, 9, 3, 2, WHITE); headBox(17, 9, 3, 2, WHITE); 
-                    headBox(13, 9, 2, 2, EYE_BEAST); headBox(17, 9, 2, 2, EYE_BEAST);
-                    headDot(14, 9, WHITE); headDot(18, 9, WHITE); // Piercing glint
-                    
-                    // Angled eyebrows (thicker)
-                    headBox(11, 7, 4, 2, 0x880000); 
-                    headBox(17, 7, 4, 2, 0x880000);
-                    headDot(14, 8, 0x880000); headDot(17, 8, 0x880000);
-                    // Angry brow furrow
-                    headDot(15, 8, 0xe0ac7d); headDot(16, 8, 0xe0ac7d);
-                    // Cheek lines
-                    headDot(13, 11, 0xe0ac7d); headDot(18, 11, 0xe0ac7d);
+                    // Beast Face Details
+                    headBox(12, 8, 3, 1, hairColor); headBox(17, 8, 3, 1, hairColor); // Thick silver eyebrows
+                    headDot(15, 8, 0xe0ac7d); headDot(16, 8, 0xe0ac7d); // Brow furrow
+                    headDot(13, 11, 0xe0ac7d); headDot(18, 11, 0xe0ac7d); // Cheek lines
                 } else {
-                    headBox(12, 9, 3, 2, WHITE); headBox(17, 9, 3, 2, WHITE); 
-                    headDot(13, 9, WHITE); headDot(17, 9, WHITE); 
-                    headDot(14, 9, eyeColor); headDot(17, 9, eyeColor); 
-                    // Eyebrows
-                    headBox(12, 8, 3, 1, HAIR_BASE); headBox(17, 8, 3, 1, HAIR_BASE);
-                    // Angry brow furrow
-                    headDot(15, 8, 0xe0ac7d); headDot(16, 8, 0xe0ac7d);
-                    // Cheek lines
-                    headDot(13, 11, 0xe0ac7d); headDot(18, 11, 0xe0ac7d);
+                    // Base Face Details
+                    headBox(12, 8, 3, 1, hairColor); headBox(17, 8, 3, 1, hairColor); // Black eyebrows
                 }
                 headDot(15, 11, 0xcc8866); // Nose
 
                 if (isTransformed) { 
-                    // Massive gravity-defying silver/white hair
-                    headBox(9, 0, 14, 6, hairColor); // Base
+                    // Beast Hair (Spiky, tall, but within bounds)
+                    headBox(10, 0, 12, 6, hairColor); // Base
+                    headBox(11, -6, 10, 6, hairColor); 
+                    headBox(12, -12, 8, 6, hairColor); // Center spike
+                    headBox(13, -16, 6, 4, hairColor);
+                    headBox(14, -20, 4, 4, hairColor);
                     
-                    // Main central-back spike (huge, reaching up to -35)
-                    headBox(12, -25, 8, 25, hairColor); 
-                    headBox(13, -30, 6, 5, hairColor);
-                    headBox(14, -35, 4, 5, hairColor);
-                    headBox(15, -38, 2, 3, hairColor);
+                    // Side spikes
+                    headBox(8, -4, 4, 6, hairColor);
+                    headBox(20, -4, 4, 6, hairColor);
+                    headBox(6, 0, 4, 6, hairColor);
+                    headBox(22, 0, 4, 6, hairColor);
                     
-                    // Left sweeping spikes
-                    headBox(5, -15, 7, 15, hairColor);
-                    headBox(3, -22, 5, 7, hairColor);
-                    headBox(1, -26, 3, 4, hairColor);
+                    // Bang
+                    headBox(13, 6, 4, 6, hairColor);
+                    headBox(14, 12, 2, 4, hairColor);
                     
-                    // Right sweeping spikes
-                    headBox(20, -15, 7, 15, hairColor);
-                    headBox(24, -22, 5, 7, hairColor);
-                    headBox(28, -26, 3, 4, hairColor);
-                    
-                    // Lower side spikes
-                    headBox(3, -5, 6, 10, hairColor);
-                    headBox(1, 0, 4, 5, hairColor);
-                    headBox(23, -5, 6, 10, hairColor);
-                    headBox(27, 0, 4, 5, hairColor);
-                    
-                    // Front bang (iconic single large bang over the right eye)
-                    headBox(12, 6, 5, 10, hairColor);
-                    headBox(13, 16, 3, 4, hairColor);
-                    headBox(14, 20, 1, 3, hairColor);
-                    
-                    // Hair shading (light blue/grey)
-                    headBox(12, -25, 2, 25, HAIR_SHADOW);
-                    headBox(13, -30, 1, 5, HAIR_SHADOW);
-                    headBox(5, -15, 2, 15, HAIR_SHADOW);
-                    headBox(3, -22, 1, 7, HAIR_SHADOW);
-                    headBox(20, -15, 2, 15, HAIR_SHADOW);
-                    headBox(24, -22, 1, 7, HAIR_SHADOW);
-                    headBox(12, 6, 1, 10, HAIR_SHADOW);
-                    
-                    // Hair highlights
-                    headBox(14, -25, 1, 20, 0xffffff); headBox(17, -25, 1, 20, 0xffffff);
-                    headBox(14, 6, 1, 8, 0xffffff); // Bang highlight
+                    // Hair shading
+                    headBox(11, -6, 1, 6, HAIR_SHADOW);
+                    headBox(12, -12, 1, 6, HAIR_SHADOW);
+                    headBox(13, 6, 1, 6, HAIR_SHADOW); // Bang shadow
                 } else { 
                     // Ultimate Gohan hair (spiky but normal length, one bang)
                     headBox(10, 0, 12, 6, hairColor); 
@@ -933,9 +919,10 @@ export default class PreloadScene extends Phaser.Scene {
                     headBox(14, 10, 1, 2, hairColor);
                     
                     // Hair shading
-                    headBox(11, 0, 1, 5, 0x333333); headBox(20, 0, 1, 5, 0x333333);
-                    headBox(13, 6, 1, 4, 0x333333); // Bang shadow
-                    headBox(14, -6, 1, 6, 0x333333); // Middle spike shadow
+                    const hairShadow = 0x333333;
+                    headBox(11, 0, 1, 5, hairShadow); headBox(20, 0, 1, 5, hairShadow);
+                    headBox(13, 6, 1, 4, hairShadow); // Bang shadow
+                    headBox(14, -6, 1, 6, hairShadow); // Middle spike shadow
                 }
                 break;
             }
@@ -1843,57 +1830,84 @@ export default class PreloadScene extends Phaser.Scene {
                 if (isTransformed) {
                     // TRUE FORM (Heian Era)
                     
-                    // Extra Arms (Back/Lower)
-                    box(5, 16, 3, 6, SKIN); box(24, 16, 3, 6, SKIN); // Upper extra arms
-                    box(5, 16, 1, 6, SKIN_SHADOW); box(26, 16, 1, 6, SKIN_SHADOW); // Upper extra arm shadow
-                    box(4, 20, 3, 4, SKIN); box(25, 20, 3, 4, SKIN); // Lower extra arms
-                    box(4, 20, 1, 4, SKIN_SHADOW); box(27, 20, 1, 4, SKIN_SHADOW); // Lower extra arm shadow
-                    box(4, 22, 3, 2, TATTOO); box(25, 22, 3, 2, TATTOO); // Wrist tattoos
+                    // Extra Arms (Lower/Back) - thinner and positioned better
+                    box(8, 16, 2, 6, SKIN); box(22, 16, 2, 6, SKIN); // Extra arms
+                    box(8, 16, 1, 6, SKIN_SHADOW); box(23, 16, 1, 6, SKIN_SHADOW); // Extra arm shadow
+                    box(8, 20, 2, 2, TATTOO); box(22, 20, 2, 2, TATTOO); // Wrist tattoos
                     
-                    // Main Arms
-                    box(7, 14, 4, 7, SKIN); box(21, 14, 4, 7, SKIN);
-                    box(7, 14, 1, 7, SKIN_SHADOW); box(24, 14, 1, 7, SKIN_SHADOW); // Main arm shadow
-                    box(7, 18, 4, 4, SKIN_SHADOW); box(21, 18, 4, 4, SKIN_SHADOW); // Forearm shading
-                    box(7, 16, 4, 1, TATTOO); box(21, 16, 4, 1, TATTOO); // Arm bands
-                    box(7, 19, 4, 1, TATTOO); box(21, 19, 4, 1, TATTOO);
+                    // Main Arms - proportionate
+                    box(9, 14, 3, 7, SKIN); box(20, 14, 3, 7, SKIN);
+                    box(9, 14, 1, 7, SKIN_SHADOW); box(22, 14, 1, 7, SKIN_SHADOW); // Main arm shadow
+                    box(9, 18, 3, 3, SKIN_SHADOW); box(20, 18, 3, 3, SKIN_SHADOW); // Forearm shading
+                    box(9, 16, 3, 1, TATTOO); box(20, 16, 3, 1, TATTOO); // Arm bands
+                    box(9, 19, 3, 1, TATTOO); box(20, 19, 3, 1, TATTOO);
                     
-                    // Torso (Exposed chest + White Hakama/Robe lower)
-                    box(10, 14, 12, 5, SKIN); // Exposed chest
-                    box(10, 14, 1, 5, SKIN_SHADOW); box(21, 14, 1, 5, SKIN_SHADOW); // Chest shadow
+                    // Torso (Exposed chest) - slimmer
+                    box(12, 14, 8, 5, SKIN); // Exposed chest
+                    box(12, 14, 1, 5, SKIN_SHADOW); box(19, 14, 1, 5, SKIN_SHADOW); // Chest shadow
+                    box(14, 17, 4, 1, SKIN_SHADOW); // Abs shading
+                    
                     // Chest Tattoos
-                    box(12, 15, 8, 1, TATTOO); // Collarbone line
+                    box(13, 15, 6, 1, TATTOO); // Collarbone line
                     box(15, 16, 2, 3, TATTOO); // Center chest
                     
-                    // White Robe (Lower half / baggy pants)
-                    box(9, 19, 14, 6, ROBE_TRANS);
-                    box(9, 19, 2, 6, ROBE_TRANS_SHADOW); box(21, 19, 2, 6, ROBE_TRANS_SHADOW); // Robe shadow
+                    // Sash (Obi)
+                    box(11, 18, 10, 3, SASH);
+                    box(11, 20, 10, 1, 0x1a1a1a); // Sash bottom shadow
                     
-                    // Sash
-                    box(9, 18, 14, 2, SASH);
-                    box(9, 19, 14, 1, 0x1a1a1a); // Sash shadow
+                    // Sash Knot & Dangle
+                    box(14, 18, 4, 3, 0x1a1a1a); // Knot
+                    box(14, 21, 3, 5, SASH); // Dangling fabric
+                    box(16, 21, 1, 5, 0x1a1a1a); // Dangle shadow
                     
-                    // Head
-                    headBox(11, 5, 10, 9, SKIN);
+                    // White Hakama (Baggy Pants)
+                    // Left Leg
+                    box(9, 21, 6, 8, ROBE_TRANS); // Main left leg
+                    box(8, 25, 2, 4, ROBE_TRANS); // Left flare
+                    box(9, 21, 1, 8, ROBE_TRANS_SHADOW); // Left outer shadow
+                    box(11, 22, 1, 7, ROBE_TRANS_SHADOW); // Left fold 1
+                    box(13, 21, 1, 8, ROBE_TRANS_SHADOW); // Left fold 2
+                    box(14, 21, 1, 8, 0xc8c9ce); // Left inner deep shadow
+                    
+                    // Right Leg
+                    box(17, 21, 6, 8, ROBE_TRANS); // Main right leg
+                    box(22, 25, 2, 4, ROBE_TRANS); // Right flare
+                    box(22, 21, 1, 8, ROBE_TRANS_SHADOW); // Right outer shadow
+                    box(20, 22, 1, 7, ROBE_TRANS_SHADOW); // Right fold 1
+                    box(18, 21, 1, 8, ROBE_TRANS_SHADOW); // Right fold 2
+                    box(17, 21, 1, 8, 0xc8c9ce); // Right inner deep shadow
+                    
+                    // Crotch connection
+                    box(15, 21, 2, 4, ROBE_TRANS_SHADOW); 
+                    box(15, 21, 2, 2, ROBE_TRANS);
+                    
+                    // Head - standard size
+                    headBox(12, 6, 8, 8, SKIN);
                     // Right side face deformity (Heian mask)
-                    headBox(16, 5, 5, 9, SKIN_SHADOW); 
+                    headBox(16, 5, 5, 9, SKIN_SHADOW); // Mask base
+                    headBox(17, 6, 3, 7, 0xcc9977); // Mask detail
                     
                     // Hair (Spikier, wilder)
-                    headBox(10, 1, 12, 4, HAIR);
-                    headBox(9, 3, 2, 4, HAIR); headBox(21, 3, 2, 4, HAIR);
-                    headBox(11, 0, 3, 3, HAIR); headBox(15, -1, 3, 3, HAIR); headBox(18, 0, 3, 3, HAIR);
+                    headBox(11, 2, 10, 4, HAIR);
+                    headBox(10, 4, 2, 4, HAIR); headBox(20, 4, 2, 4, HAIR);
+                    headBox(12, 0, 2, 3, HAIR); headBox(15, -1, 2, 3, HAIR); headBox(18, 0, 2, 3, HAIR);
                     
-                    // Face Tattoos
-                    headBox(12, 7, 2, 1, TATTOO); headBox(18, 7, 2, 1, TATTOO); // Under eyes
-                    headBox(14, 6, 4, 1, TATTOO); // Forehead
+                    // Eyebrows
+                    headBox(13, 8, 2, 1, HAIR); headBox(17, 8, 2, 1, HAIR);
                     
                     // Eyes (4 eyes)
-                    headBox(12, 8, 2, 1, 0xffffff); headBox(18, 8, 2, 1, 0xffffff); // Main Sclera
-                    headBox(13, 8, 1, 1, 0xff0000); headBox(18, 8, 1, 1, 0xff0000); // Main Pupils
+                    headBox(13, 9, 2, 1, 0xffffff); headBox(17, 9, 2, 1, 0xffffff); // Main Sclera
+                    headBox(14, 9, 1, 1, 0xff0000); headBox(17, 9, 1, 1, 0xff0000); // Main Pupils
                     
-                    headBox(18, 10, 2, 1, 0xffffff); // Extra right eye lower
-                    headBox(18, 10, 1, 1, 0xff0000);
-                    headBox(18, 6, 2, 1, 0xffffff); // Extra right eye upper
-                    headBox(18, 6, 1, 1, 0xff0000);
+                    headBox(17, 11, 2, 1, 0xffffff); // Extra right eye lower
+                    headBox(17, 11, 1, 1, 0xff0000);
+                    headBox(17, 7, 2, 1, 0xffffff); // Extra right eye upper
+                    headBox(17, 7, 1, 1, 0xff0000);
+                    
+                    // Nose
+                    headBox(15, 11, 2, 1, SKIN_SHADOW);
+                    
+                    // Face Tattoos (Removed under-eye and forehead lines to clean up face)
                     
                 } else {
                     // YUJI FORM
@@ -1924,15 +1938,97 @@ export default class PreloadScene extends Phaser.Scene {
                     headBox(10, 2, 12, 3, HAIR);
                     headBox(11, 1, 3, 2, HAIR); headBox(15, 0, 2, 2, HAIR); headBox(18, 1, 3, 2, HAIR);
                     
-                    // Face Tattoos
-                    headBox(12, 7, 2, 1, TATTOO); headBox(18, 7, 2, 1, TATTOO); // Under eyes
-                    headBox(14, 6, 4, 1, TATTOO); // Forehead
+                    // Face Tattoos (Removed under-eye and forehead lines to clean up face)
                     headBox(15, 11, 2, 1, TATTOO); // Chin
                     headBox(11, 9, 1, 1, TATTOO); headBox(20, 9, 1, 1, TATTOO); // Cheeks
                     
                     // Eyes
                     headBox(12, 8, 2, 1, 0xffffff); headBox(18, 8, 2, 1, 0xffffff); // Sclera
                     headBox(13, 8, 1, 1, 0xff0000); headBox(18, 8, 1, 1, 0xff0000); // Red pupils
+                }
+                break;
+            }
+            case 'gojo': {
+                const isTransformed = form === 1;
+                const SKIN = 0xffeebb;
+                const SKIN_SHADOW = 0xccbb99;
+                const HAIR = 0xffffff;
+                const HAIR_SHADOW = 0xdddddd;
+                const JACKET = 0x1a1a24;
+                const JACKET_SHADOW = 0x0f0f15;
+                const PANTS = 0x1a1a24;
+                const PANTS_SHADOW = 0x0f0f15;
+                const SHOES = 0x111111;
+                const BLINDFOLD = 0x111111;
+                const EYE_BLUE = 0x00ffff;
+                const EYE_WHITE = 0xffffff;
+
+                // Legs
+                box(11, 24, 4, 6, PANTS); box(17, 24, 4, 6, PANTS);
+                box(11, 24, 1, 6, PANTS_SHADOW); box(20, 24, 1, 6, PANTS_SHADOW); // Pants shadow
+                
+                // Shoes
+                box(10, 30, 5, 2, SHOES); box(17, 30, 5, 2, SHOES);
+                
+                // Torso (Jacket)
+                box(10, 14, 12, 10, JACKET);
+                box(10, 14, 2, 10, JACKET_SHADOW); box(20, 14, 2, 10, JACKET_SHADOW); // Jacket shadow
+                box(15, 14, 2, 10, JACKET_SHADOW); // Zipper line
+                
+                // Arms
+                box(7, 14, 3, 8, JACKET); box(22, 14, 3, 8, JACKET);
+                box(7, 14, 1, 8, JACKET_SHADOW); box(24, 14, 1, 8, JACKET_SHADOW); // Arm shadow
+                
+                // Hands
+                box(7, 22, 3, 2, SKIN); box(22, 22, 3, 2, SKIN);
+                box(7, 22, 1, 2, SKIN_SHADOW); box(24, 22, 1, 2, SKIN_SHADOW); // Hand shadow
+                
+                // Head
+                headBox(12, 6, 8, 8, SKIN);
+                headBox(12, 6, 1, 8, SKIN_SHADOW); headBox(19, 6, 1, 8, SKIN_SHADOW); // Face shadow
+                
+                if (isTransformed) {
+                    // LIMITLESS / SIX EYES (Blindfold off, floating hair)
+                    
+                    // Hair (Spiky, floating up)
+                    headBox(10, 0, 12, 6, HAIR); 
+                    headBox(11, -2, 10, 2, HAIR);
+                    headBox(12, -4, 8, 2, HAIR);
+                    headBox(14, -6, 4, 2, HAIR);
+                    
+                    // Hair shadow
+                    headBox(10, 0, 2, 6, HAIR_SHADOW); headBox(20, 0, 2, 6, HAIR_SHADOW);
+                    
+                    // Eyes (Six Eyes)
+                    headBox(13, 9, 2, 2, EYE_WHITE); headBox(17, 9, 2, 2, EYE_WHITE); // Sclera
+                    headBox(13, 9, 2, 1, EYE_BLUE); headBox(17, 9, 2, 1, EYE_BLUE); // Bright blue iris
+                    headBox(14, 9, 1, 1, 0xffffff); headBox(18, 9, 1, 1, 0xffffff); // Eye shine
+                    
+                    // Eyebrows
+                    headBox(13, 7, 2, 1, HAIR); headBox(17, 7, 2, 1, HAIR);
+                    
+                    // Smile
+                    headBox(15, 12, 2, 1, SKIN_SHADOW);
+                    
+                } else {
+                    // BASE FORM (Blindfold on, hair down)
+                    
+                    // Hair (Swept down)
+                    headBox(10, 2, 12, 5, HAIR);
+                    headBox(11, 0, 10, 2, HAIR);
+                    headBox(13, -2, 6, 2, HAIR);
+                    // Bangs over blindfold
+                    headBox(11, 7, 2, 3, HAIR); headBox(14, 7, 4, 2, HAIR); headBox(19, 7, 2, 3, HAIR);
+                    
+                    // Hair shadow
+                    headBox(10, 2, 2, 5, HAIR_SHADOW); headBox(20, 2, 2, 5, HAIR_SHADOW);
+                    
+                    // Blindfold
+                    headBox(11, 8, 10, 3, BLINDFOLD);
+                    headBox(11, 8, 10, 1, 0x222222); // Blindfold highlight
+                    
+                    // Smile
+                    headBox(15, 12, 2, 1, SKIN_SHADOW);
                 }
                 break;
             }

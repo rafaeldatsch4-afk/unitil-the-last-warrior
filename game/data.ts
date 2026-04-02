@@ -226,5 +226,20 @@ export const INITIAL_CHARACTERS: CharacterData[] = [
     specialName: "CLEAVE",
     superName: "CASTELO MANIVOLENTE",
     specialColor: 0x8b0000
+  },
+  {
+    id: 15,
+    key: "gojo",
+    name: "Satoru Gojo",
+    price: 2500,
+    unlocked: true,
+    maxHp: 280,
+    transformAvailable: true,
+    sprite: "",
+    frameWidth: 64,
+    frameHeight: 64,
+    specialName: "RED & BLUE",
+    superName: "HOLLOW PURPLE",
+    specialColor: 0x8a2be2
   }
 ];

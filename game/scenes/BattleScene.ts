@@ -11,6 +11,7 @@ export default class BattleScene extends Phaser.Scene {
 
   // Mobile Controls Flags
   mobileP1Attack = false;
+  mobileP1KiBlast = false;
   mobileP1Defend = false;
   mobileP1Special = false;
   mobileP1Transform = false;
@@ -153,8 +154,13 @@ export default class BattleScene extends Phaser.Scene {
             
             // Attack
             if(Phaser.Input.Keyboard.JustDown(this.keys.p1_attack) || this.mobileP1Attack) {
-                this.performAttack(true);
+                this.performAttack(true, 'melee');
                 this.mobileP1Attack = false; // Reset flag
+            }
+            // Ki Blast
+            else if(Phaser.Input.Keyboard.JustDown(this.keys.p1_kiblast) || this.mobileP1KiBlast) {
+                this.performAttack(true, 'ki');
+                this.mobileP1KiBlast = false; // Reset flag
             }
             // Transform
             else if(Phaser.Input.Keyboard.JustDown(this.keys.p1_transform) || this.mobileP1Transform) {
@@ -185,7 +191,8 @@ export default class BattleScene extends Phaser.Scene {
             this.enemyDefending = false;
             this.stopContinuousCharge(false);
 
-            if(Phaser.Input.Keyboard.JustDown(this.keys.p2_attack)) this.performAttack(false);
+            if(Phaser.Input.Keyboard.JustDown(this.keys.p2_attack)) this.performAttack(false, 'melee');
+            else if(Phaser.Input.Keyboard.JustDown(this.keys.p2_kiblast)) this.performAttack(false, 'ki');
             else if(Phaser.Input.Keyboard.JustDown(this.keys.p2_transform)) this.performTransform(false);
 
             if (this.keys.p2_special.isDown) {
@@ -318,10 +325,12 @@ export default class BattleScene extends Phaser.Scene {
 
       this.keys = this.input.keyboard.addKeys({
           p1_attack: Phaser.Input.Keyboard.KeyCodes.W,
+          p1_kiblast: Phaser.Input.Keyboard.KeyCodes.E,
           p1_defend: Phaser.Input.Keyboard.KeyCodes.S,
           p1_special: Phaser.Input.Keyboard.KeyCodes.D,
           p1_transform: Phaser.Input.Keyboard.KeyCodes.A,
           p2_attack: Phaser.Input.Keyboard.KeyCodes.UP,
+          p2_kiblast: Phaser.Input.Keyboard.KeyCodes.ENTER,
           p2_defend: Phaser.Input.Keyboard.KeyCodes.RIGHT,
           p2_special: Phaser.Input.Keyboard.KeyCodes.DOWN, 
           p2_transform: Phaser.Input.Keyboard.KeyCodes.LEFT,
@@ -387,6 +396,7 @@ export default class BattleScene extends Phaser.Scene {
 
       // Right side (Attacks)
       createBtn(860, 450, 'ATK', 0xe74c3c, () => { this.mobileP1Attack = true; });
+      createBtn(780, 450, 'KI', 0x00ffff, () => { this.mobileP1KiBlast = true; });
       createBtn(860, 350, 'SPC', 0xf1c40f, 
           () => { this.mobileP1Special = true; }, 
           () => { this.mobileP1Special = false; this.mobileP1SpecialJustUp = true; }
@@ -420,7 +430,7 @@ export default class BattleScene extends Phaser.Scene {
       return `${baseKey}_${animType}`;
   }
 
-  performAttack(isPlayer: boolean) {
+  performAttack(isPlayer: boolean, attackType: 'melee' | 'ki') {
       if(this.isBattleOver) return;
       const attacker = isPlayer ? this.player : this.enemy;
       const target = isPlayer ? this.enemy : this.player;
@@ -430,10 +440,6 @@ export default class BattleScene extends Phaser.Scene {
       const attackerData = isPlayer ? this.playerData : this.enemyData;
 
       this.setActionState(isPlayer, true);
-
-      // Determine character type
-      const meleeChars = ['leonardo', 'minipekka', 'cyberninja', 'chapolim', 'batman'];
-      const isMelee = meleeChars.includes(attackerData.key);
 
       // 1. Windup (Hop Back & Rotate)
       const windupDist = isPlayer ? -60 : 60;
@@ -451,7 +457,7 @@ export default class BattleScene extends Phaser.Scene {
           onComplete: () => {
               if(!this.scene.isActive()) return;
               
-              if (isMelee) {
+              if (attackType === 'melee') {
                   // MELEE: Quick Lunge with Follow-Through
                   const trailTimer = this.time.addEvent({
                       delay: 15,
@@ -502,7 +508,7 @@ export default class BattleScene extends Phaser.Scene {
                          this.modifyKi(isPlayer, 5);
                          
                          // Screen shake for melee
-                         this.cameras.main.shake(150, 0.015);
+                         this.cameras.main.shake(200, 0.03);
                          
                          // Visual Impact
                          this.createImpactEffect(target.x, target.y - 20, 0xffffff);
@@ -578,26 +584,33 @@ export default class BattleScene extends Phaser.Scene {
                              duration: 50
                          });
                          
-                         const blast = this.add.circle(attacker.x + (isPlayer ? 50 : -50), attacker.y - 10, 18, blastColor).setDepth(5);
+                         const originX = attacker.x + (isPlayer ? 50 : -50);
+                         const originY = attacker.y - 10;
+                         
+                         // Muzzle flash at origin
+                         const muzzle = this.add.circle(originX, originY, 25, blastColor).setDepth(4);
+                         muzzle.setBlendMode(Phaser.BlendModes.ADD);
+                         this.tweens.add({ targets: muzzle, scale: 0, alpha: 0, duration: 200, onComplete: () => muzzle.destroy() });
+
+                         const blast = this.add.circle(originX, originY, 18, blastColor).setDepth(5);
                          const core = this.add.circle(blast.x, blast.y, 10, 0xffffff).setDepth(6);
                          blast.setBlendMode(Phaser.BlendModes.ADD);
                          
-                         // Beam trail
-                         const trailTimer = this.time.addEvent({
+                         // Continuous Beam trail
+                         const trailLine = this.add.graphics().setDepth(3);
+                         trailLine.setBlendMode(Phaser.BlendModes.ADD);
+                         
+                         const trailUpdateEvent = this.time.addEvent({
                              delay: 10,
                              callback: () => {
                                  if (!this.scene.isActive() || !blast.active) return;
-                                 const trail = this.add.circle(blast.x, blast.y, 12, blastColor, 0.6).setDepth(4);
-                                 trail.setBlendMode(Phaser.BlendModes.ADD);
-                                 this.tweens.add({
-                                     targets: trail,
-                                     scale: 0.5,
-                                     alpha: 0,
-                                     duration: 200,
-                                     onComplete: () => trail.destroy()
-                                 });
+                                 trailLine.clear();
+                                 trailLine.lineStyle(20, blastColor, 0.6);
+                                 trailLine.lineBetween(originX, originY, blast.x, blast.y);
+                                 trailLine.lineStyle(10, 0xffffff, 0.8);
+                                 trailLine.lineBetween(originX, originY, blast.x, blast.y);
                              },
-                             repeat: 15
+                             loop: true
                          });
                          
                          this.tweens.add({
@@ -606,7 +619,13 @@ export default class BattleScene extends Phaser.Scene {
                              duration: 120, // Faster beam
                              ease: 'Linear',
                              onComplete: () => {
-                                 trailTimer.remove();
+                                 trailUpdateEvent.remove();
+                                 this.tweens.add({
+                                     targets: trailLine,
+                                     alpha: 0,
+                                     duration: 150,
+                                     onComplete: () => trailLine.destroy()
+                                 });
                                  blast.destroy();
                                  core.destroy();
                                  
@@ -766,6 +785,10 @@ export default class BattleScene extends Phaser.Scene {
           auraColor = 0x8b0000; // Dark Red
           ringColor = 0x000000; // Black
           transformText = "TRUE FORM!";
+      } else if (data.key === 'gojo') {
+          auraColor = 0x00ffff; // Bright Blue
+          ringColor = 0xffffff; // White
+          transformText = "LIMITLESS!";
       }
 
       // 1. Initial Charge Up (Screen darkens significantly)
@@ -1180,6 +1203,10 @@ export default class BattleScene extends Phaser.Scene {
                   case 'thukuna':
                       if (isSuper) this.specialMalevolentShrine(isPlayer);
                       else this.specialCleave(isPlayer);
+                      break;
+                  case 'gojo':
+                      if (isSuper) this.specialHollowPurple(isPlayer);
+                      else this.specialRedAndBlue(isPlayer);
                       break;
                   default: 
                       this.specialBeam(isPlayer, isSuper, data.specialColor, false, false, 'generic'); 
@@ -1966,19 +1993,38 @@ export default class BattleScene extends Phaser.Scene {
           .setScale(3)
           .setDepth(0);
       ghost.setFlipX(!isP);
-      this.tweens.add({ targets: ghost, alpha: 0.5, duration: 500 });
+      if (this.anims.exists('goku_ssj_attack')) {
+          ghost.play('goku_ssj_attack');
+      }
+      this.tweens.add({ targets: ghost, alpha: 0.6, duration: 500 });
 
-      // Massive Beam
-      const beam = this.add.rectangle(hand.x, hand.y, 0, 100, 0x00ffff).setOrigin(0, 0.5).setDepth(5).setAlpha(0.9);
-      beam.scaleX = isP ? 1 : -1;
+      // Massive Beam using the new texture
+      const beam = this.add.sprite(hand.x, hand.y, 'massive_beam')
+          .setOrigin(0, 0.5)
+          .setDepth(5)
+          .setAlpha(0.9);
+      beam.scaleX = isP ? 0.1 : -0.1;
+      beam.scaleY = 0.5;
+      
       const distance = Math.abs(target.x - hand.x) + 200;
+      const targetScaleX = (isP ? distance : -distance) / 128; // 128 is the width of massive_beam
+
+      // Muzzle Flash
+      const muzzle = this.add.circle(hand.x, hand.y, 40, 0x00ffff).setDepth(6);
+      muzzle.setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: muzzle, scale: 0, alpha: 0, duration: 300, onComplete: () => muzzle.destroy() });
 
       this.time.delayedCall(500, () => {
           if(!this.scene.isActive()) return;
+          
+          this.cameras.main.shake(1000, 0.04);
+          
           this.tweens.add({
               targets: beam,
-              width: distance,
+              scaleX: targetScaleX,
+              scaleY: 2.5,
               duration: 200,
+              ease: 'Power2',
               onComplete: () => {
                   if(!this.scene.isActive()) return;
                   this.createImpactEffect(target.x, target.y, 0x00ffff);
@@ -2813,51 +2859,112 @@ export default class BattleScene extends Phaser.Scene {
       this.log("CASTELO MANIVOLENTE!");
       
       // Screen goes dark red
-      const darkOverlay = this.add.rectangle(this.cameras.main.width/2, this.cameras.main.height/2, this.cameras.main.width, this.cameras.main.height, 0x8b0000, 0).setDepth(10);
+      const darkOverlay = this.add.rectangle(this.cameras.main.width/2, this.cameras.main.height/2, this.cameras.main.width, this.cameras.main.height, 0x5a0000, 0).setDepth(8);
       
       this.tweens.add({
           targets: darkOverlay,
-          fillAlpha: 0.6,
+          fillAlpha: 0.8,
           duration: 500,
           onComplete: () => {
               if(!this.scene.isActive()) return;
               
-              // Shrine visual (a giant skull/shrine representation behind attacker)
+              // Shrine visual (Demonic Temple)
               const shrine = this.add.graphics().setDepth(9);
-              shrine.fillStyle(0x000000, 0.8);
-              shrine.fillRect(attacker.x - 50, attacker.y - 150, 100, 150);
-              shrine.fillStyle(0xff0000, 1);
-              shrine.fillCircle(attacker.x, attacker.y - 100, 20); // Eye/Core
+              const sx = attacker.x;
+              const sy = attacker.y - 40;
+              
+              // Base/Platform
+              shrine.fillStyle(0x1a1a1a, 1);
+              shrine.fillRect(sx - 100, sy, 200, 40);
+              shrine.fillRect(sx - 80, sy - 20, 160, 20);
+              
+              // Pillars
+              shrine.fillStyle(0x2a0000, 1);
+              shrine.fillRect(sx - 60, sy - 120, 20, 100);
+              shrine.fillRect(sx + 40, sy - 120, 20, 100);
+              
+              // Roof tiers (Pagoda style)
+              shrine.fillStyle(0x0f0f0f, 1);
+              shrine.beginPath();
+              shrine.moveTo(sx - 90, sy - 120);
+              shrine.lineTo(sx + 90, sy - 120);
+              shrine.lineTo(sx + 70, sy - 150);
+              shrine.lineTo(sx - 70, sy - 150);
+              shrine.closePath();
+              shrine.fillPath();
+              
+              shrine.beginPath();
+              shrine.moveTo(sx - 60, sy - 150);
+              shrine.lineTo(sx + 60, sy - 150);
+              shrine.lineTo(sx + 40, sy - 190);
+              shrine.lineTo(sx - 40, sy - 190);
+              shrine.closePath();
+              shrine.fillPath();
+              
+              // Center Core / Mouth
+              shrine.fillStyle(0x000000, 1);
+              shrine.fillRect(sx - 30, sy - 100, 60, 80);
+              shrine.fillStyle(0x8b0000, 1);
+              shrine.fillCircle(sx, sy - 60, 15); // Glowing eye/core
+              
+              // Skulls/Bones scattered
+              shrine.fillStyle(0xdddddd, 1);
+              for(let k=0; k<8; k++) {
+                  shrine.fillCircle(sx + Phaser.Math.Between(-80, 80), sy + Phaser.Math.Between(0, 30), Phaser.Math.Between(3, 6));
+              }
+              
+              // Shrine entrance animation
+              shrine.setAlpha(0);
+              shrine.y += 50;
+              this.tweens.add({
+                  targets: shrine,
+                  alpha: 1,
+                  y: '-=50',
+                  duration: 400,
+                  ease: 'Back.easeOut'
+              });
               
               this.cameras.main.shake(1500, 0.02);
 
-              // Relentless slashes
-              for(let i=0; i<15; i++) {
-                  this.time.delayedCall(i * 100, () => {
+              // Relentless slashes (Cleave/Dismantle storm)
+              for(let i=0; i<20; i++) {
+                  this.time.delayedCall(i * 80, () => {
                       if(!this.scene.isActive()) return;
-                      const cx = target.x + Phaser.Math.Between(-40, 40);
-                      const cy = target.y + Phaser.Math.Between(-50, 50);
+                      const cx = target.x + Phaser.Math.Between(-60, 60);
+                      const cy = target.y + Phaser.Math.Between(-80, 80);
+                      const angle = Phaser.Math.Between(0, 360) * (Math.PI / 180);
+                      const length = Phaser.Math.Between(60, 150);
                       
                       const slash = this.add.graphics().setDepth(15);
-                      slash.lineStyle(2, 0xffffff, 0.9);
+                      
+                      // Black core
+                      slash.lineStyle(6, 0x000000, 1);
                       slash.beginPath();
-                      slash.moveTo(cx - 20, cy - 20);
-                      slash.lineTo(cx + 20, cy + 20);
+                      slash.moveTo(cx - Math.cos(angle)*length/2, cy - Math.sin(angle)*length/2);
+                      slash.lineTo(cx + Math.cos(angle)*length/2, cy + Math.sin(angle)*length/2);
+                      slash.strokePath();
+                      
+                      // Red outline
+                      slash.lineStyle(2, 0xff0000, 1);
+                      slash.beginPath();
+                      slash.moveTo(cx - Math.cos(angle)*length/2, cy - Math.sin(angle)*length/2);
+                      slash.lineTo(cx + Math.cos(angle)*length/2, cy + Math.sin(angle)*length/2);
                       slash.strokePath();
                       
                       this.tweens.add({
                           targets: slash,
                           alpha: 0,
-                          duration: 200,
+                          scaleX: 1.5,
+                          duration: 150,
                           onComplete: () => slash.destroy()
                       });
 
-                      this.createImpactEffect(cx, cy, 0xff0000);
-                      if(this.cache.audio.exists('sfx_hit')) this.sound.play('sfx_hit');
+                      this.createImpactEffect(cx, cy, 0x8b0000);
+                      if(this.cache.audio.exists('sfx_hit')) this.sound.play('sfx_hit', { volume: 0.5 });
                   });
               }
 
-              this.time.delayedCall(1600, () => {
+              this.time.delayedCall(1800, () => {
                   if(!this.scene.isActive()) return;
                   
                   // Final massive slash
@@ -2875,6 +2982,128 @@ export default class BattleScene extends Phaser.Scene {
                           darkOverlay.destroy();
                           shrine.destroy();
                           this.onSpecialComplete(isP);
+                      }
+                  });
+              });
+          }
+      });
+  }
+
+  private specialRedAndBlue(isP: boolean) {
+      const attacker = isP ? this.player : this.enemy;
+      const target = isP ? this.enemy : this.player;
+      const transLevel = isP ? this.playerTransformLevel : this.enemyTransformLevel;
+      const dmg = Math.floor(45 * this.getDamageMultiplier(transLevel));
+
+      this.log("CURSED TECHNIQUE: RED & BLUE!");
+      
+      const hand = this.getHandPosition(isP);
+      
+      // Create Blue (Attract)
+      const blue = this.add.circle(hand.x, hand.y - 20, 5, 0x0000ff, 1).setDepth(10);
+      // Create Red (Repel)
+      const red = this.add.circle(hand.x, hand.y + 20, 5, 0xff0000, 1).setDepth(10);
+      
+      this.tweens.add({
+          targets: [blue, red],
+          scale: 4,
+          duration: 400,
+          yoyo: true,
+          repeat: 1,
+          onComplete: () => {
+              // Shoot them
+              this.tweens.add({
+                  targets: blue,
+                  x: target.x,
+                  y: target.y - 20,
+                  duration: 300,
+                  ease: 'Power2'
+              });
+              this.tweens.add({
+                  targets: red,
+                  x: target.x,
+                  y: target.y + 20,
+                  duration: 300,
+                  ease: 'Power2',
+                  onComplete: () => {
+                      blue.destroy();
+                      red.destroy();
+                      this.createImpactEffect(target.x, target.y, 0x8a2be2);
+                      this.cameras.main.shake(200, 0.02);
+                      this.takeDamage(!isP, dmg);
+                      this.onSpecialComplete(isP);
+                  }
+              });
+          }
+      });
+  }
+
+  private specialHollowPurple(isP: boolean) {
+      const attacker = isP ? this.player : this.enemy;
+      const target = isP ? this.enemy : this.player;
+      const transLevel = isP ? this.playerTransformLevel : this.enemyTransformLevel;
+      const dmg = Math.floor(150 * this.getDamageMultiplier(transLevel));
+
+      this.log("HOLLOW PURPLE!");
+      
+      const hand = this.getHandPosition(isP);
+      
+      // Screen darken
+      const darkOverlay = this.add.rectangle(this.cameras.main.width/2, this.cameras.main.height/2, this.cameras.main.width, this.cameras.main.height, 0x000000, 0).setDepth(8);
+      this.tweens.add({ targets: darkOverlay, fillAlpha: 0.7, duration: 500 });
+      
+      // Combine Red and Blue
+      const blue = this.add.circle(hand.x - 30, hand.y, 15, 0x0000ff, 1).setDepth(10);
+      const red = this.add.circle(hand.x + 30, hand.y, 15, 0xff0000, 1).setDepth(10);
+      
+      this.tweens.add({
+          targets: [blue, red],
+          x: hand.x,
+          duration: 800,
+          ease: 'Power2',
+          onComplete: () => {
+              blue.destroy();
+              red.destroy();
+              
+              // Purple Core
+              const purple = this.add.circle(hand.x, hand.y, 25, 0x8a2be2, 1).setDepth(10);
+              const purpleAura = this.add.circle(hand.x, hand.y, 40, 0x8a2be2, 0.5).setDepth(9);
+              
+              this.cameras.main.flash(200, 138, 43, 226);
+              this.cameras.main.shake(400, 0.01);
+              
+              this.time.delayedCall(500, () => {
+                  // Fire Hollow Purple
+                  this.tweens.add({
+                      targets: [purple, purpleAura],
+                      x: isP ? target.x + 200 : target.x - 200, // Go through target
+                      scale: 5,
+                      duration: 600,
+                      ease: 'Power2',
+                      onUpdate: () => {
+                          // Destroy everything in its path (visual effect)
+                          if (Math.abs(purple.x - target.x) < 50) {
+                              this.createImpactEffect(target.x, target.y, 0x8a2be2);
+                              this.cameras.main.shake(100, 0.05);
+                          }
+                      },
+                      onComplete: () => {
+                          purple.destroy();
+                          purpleAura.destroy();
+                          
+                          this.cameras.main.flash(500, 255, 255, 255);
+                          this.cameras.main.shake(500, 0.08);
+                          this.takeDamage(!isP, dmg);
+                          
+                          this.tweens.add({
+                              targets: darkOverlay,
+                              alpha: 0,
+                              duration: 500,
+                              onComplete: () => {
+                                  darkOverlay.destroy();
+                                  this.onSpecialComplete(isP);
+                              }
+                          });
                       }
                   });
               });
