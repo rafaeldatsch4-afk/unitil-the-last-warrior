@@ -507,9 +507,6 @@ export default class BattleScene extends Phaser.Scene {
                          this.takeDamage(!isPlayer, damage); 
                          this.modifyKi(isPlayer, 5);
                          
-                         // Screen shake for melee
-                         this.cameras.main.shake(200, 0.03);
-                         
                          // Visual Impact
                          this.createImpactEffect(target.x, target.y - 20, 0xffffff);
                          
@@ -640,11 +637,8 @@ export default class BattleScene extends Phaser.Scene {
                                  this.takeDamage(!isPlayer, damage); 
                                  this.modifyKi(isPlayer, 5);
                                  
-                                 // Stronger screen shake for beam impact
-                                 this.cameras.main.shake(250, 0.04);
-                                 
                                  // Visual Impact
-                                 this.createImpactEffect(target.x, target.y - 20, blastColor);
+                                 this.createImpactEffect(target.x, target.y - 20, blastColor, 'beam');
                                  
                                  // Target hit flash
                                  this.tweens.add({
@@ -1424,9 +1418,8 @@ export default class BattleScene extends Phaser.Scene {
           onComplete: () => {
               if(!this.scene.isActive()) return;
               
-              this.createImpactEffect(endX, hand.y, col);
+              this.createImpactEffect(endX, hand.y, col, 'beam');
               this.takeDamage(!isP, dmg);
-              this.cameras.main.shake(300, 0.04);
               particles.stop();
 
               // Fade Out
@@ -1509,9 +1502,8 @@ export default class BattleScene extends Phaser.Scene {
           },
           onComplete: () => {
               if (!this.scene.isActive()) return;
-              this.createImpactEffect(endX, hand.y, 0xffff00);
+              this.createImpactEffect(endX, hand.y, 0xffff00, 'beam');
               this.takeDamage(!isP, dmg);
-              this.cameras.main.shake(300, 0.05);
               
               this.tweens.add({ 
                   targets: [core, spiral1, spiral2, muzzle], 
@@ -1563,7 +1555,6 @@ export default class BattleScene extends Phaser.Scene {
           this.tweens.add({ targets: hit, scale: 3, alpha: 0, duration: 300 });
 
           this.takeDamage(!isP, dmg);
-          this.cameras.main.flash(50, 255, 200, 255, true);
           
           // Fade out beam (Residual image)
           this.tweens.add({ 
@@ -1617,7 +1608,7 @@ export default class BattleScene extends Phaser.Scene {
               const cutLine = this.add.rectangle(target.x, target.y, 10, 200, 0xffffff).setRotation(0.5);
               this.tweens.add({ targets: cutLine, scaleX: 0, scaleY: 2, alpha: 0, duration: 200 });
               
-              this.createImpactEffect(target.x, hand.y, 0x3498db);
+              this.createImpactEffect(target.x, hand.y, 0x3498db, 'beam');
               this.takeDamage(!isP, dmg);
               slash.destroy();
               this.onSpecialComplete(isP);
@@ -1674,8 +1665,7 @@ export default class BattleScene extends Phaser.Scene {
                   .setDepth(11);
               core.scaleX = isP ? 1 : -1;
               
-              this.cameras.main.shake(500, 0.05);
-              this.createImpactEffect(target.x, hand.y, 0x000000);
+              this.createImpactEffect(target.x, hand.y, 0x000000, 'beam');
               this.takeDamage(!isP, dmg); // Buffed dmg
               
               this.tweens.add({
@@ -1863,8 +1853,7 @@ export default class BattleScene extends Phaser.Scene {
           slash.lineBetween(target.x - 50, target.y + 50 - 50, target.x + 50, target.y + 50 + 50);
           this.tweens.add({ targets: slash, alpha: 0, duration: 200, onComplete: () => slash.destroy() });
 
-          this.createImpactEffect(target.x, target.y + 50, dashColor);
-          this.cameras.main.shake(200, 0.05);
+          this.createImpactEffect(target.x, target.y + 50, dashColor, 'beam');
           this.takeDamage(!isP, dmg);
           
           // Return to start
@@ -1918,9 +1907,7 @@ export default class BattleScene extends Phaser.Scene {
                   ease: 'Power2',
                   onComplete: () => {
                       if(!this.scene.isActive()) return;
-                      this.createImpactEffect(target.x, target.y, 0x00ffff);
-                      this.cameras.main.shake(500, 0.05);
-                      this.cameras.main.flash(300, 255, 255, 255);
+                      this.createImpactEffect(target.x, target.y, 0x00ffff, 'beam');
                       this.takeDamage(!isP, dmg);
                       bomb.destroy();
                       this.onSpecialComplete(isP);
@@ -1957,8 +1944,7 @@ export default class BattleScene extends Phaser.Scene {
               duration: 200,
               onComplete: () => {
                   if(!this.scene.isActive()) return;
-                  this.createImpactEffect(target.x, target.y, 0xffff00);
-                  this.cameras.main.shake(600, 0.06);
+                  this.createImpactEffect(target.x, target.y, 0xffff00, 'beam');
                   this.takeDamage(!isP, dmg);
                   
                   this.tweens.add({
@@ -2027,8 +2013,7 @@ export default class BattleScene extends Phaser.Scene {
               ease: 'Power2',
               onComplete: () => {
                   if(!this.scene.isActive()) return;
-                  this.createImpactEffect(target.x, target.y, 0x00ffff);
-                  this.cameras.main.shake(800, 0.08);
+                  this.createImpactEffect(target.x, target.y, 0x00ffff, 'beam');
                   this.takeDamage(!isP, dmg);
                   
                   this.tweens.add({
@@ -2075,8 +2060,7 @@ export default class BattleScene extends Phaser.Scene {
                   ease: 'Power2',
                   onComplete: () => {
                       if(i === 0) {
-                          this.createImpactEffect(target.x, target.y, 0xffff00);
-                          this.cameras.main.shake(400, 0.05);
+                          this.createImpactEffect(target.x, target.y, 0xffff00, 'beam');
                           this.takeDamage(!isP, dmg);
                           this.onSpecialComplete(isP);
                       }
@@ -2115,8 +2099,7 @@ export default class BattleScene extends Phaser.Scene {
                   ease: 'Power2',
                   onComplete: () => {
                       if(!this.scene.isActive()) return;
-                      this.createImpactEffect(target.x, target.y, 0xff00ff);
-                      this.cameras.main.shake(500, 0.06);
+                      this.createImpactEffect(target.x, target.y, 0xff00ff, 'beam');
                       this.takeDamage(!isP, dmg);
                       ball.destroy();
                       this.onSpecialComplete(isP);
@@ -2153,8 +2136,7 @@ export default class BattleScene extends Phaser.Scene {
               duration: 200,
               onComplete: () => {
                   if(!this.scene.isActive()) return;
-                  this.createImpactEffect(target.x, target.y, 0x00ff00);
-                  this.cameras.main.shake(700, 0.07);
+                  this.createImpactEffect(target.x, target.y, 0x00ff00, 'beam');
                   this.takeDamage(!isP, dmg);
                   
                   this.tweens.add({
@@ -2209,7 +2191,6 @@ export default class BattleScene extends Phaser.Scene {
               this.time.delayedCall(600, () => {
                   if(!this.scene.isActive()) return;
                   this.takeDamage(!isP, dmg);
-                  this.cameras.main.shake(300, 0.05);
                   // Dash back
                   this.tweens.add({
                       targets: attacker,
@@ -2251,8 +2232,7 @@ export default class BattleScene extends Phaser.Scene {
                   yoyo: true,
                   onComplete: () => {
                       if(!this.scene.isActive()) return;
-                      this.createImpactEffect(target.x, target.y, 0x9b59b6);
-                      this.cameras.main.shake(500, 0.06);
+                      this.createImpactEffect(target.x, target.y, 0x9b59b6, 'beam');
                       this.takeDamage(!isP, dmg);
                       hole.destroy();
                       ring.destroy();
@@ -2289,8 +2269,7 @@ export default class BattleScene extends Phaser.Scene {
               duration: 200,
               onComplete: () => {
                   if(!this.scene.isActive()) return;
-                  this.createImpactEffect(target.x, target.y, 0x00eaff);
-                  this.cameras.main.shake(800, 0.08);
+                  this.createImpactEffect(target.x, target.y, 0x00eaff, 'beam');
                   this.takeDamage(!isP, dmg);
                   
                   this.tweens.add({
@@ -2338,8 +2317,7 @@ export default class BattleScene extends Phaser.Scene {
           ease: 'Cubic.easeIn',
           onComplete: () => {
               if (!this.scene.isActive()) return;
-              this.createImpactEffect(target.x, target.y, 0xd35400);
-              this.cameras.main.shake(600, 0.08);
+              this.createImpactEffect(target.x, target.y, 0xd35400, 'beam');
               this.takeDamage(!isP, dmg);
               
               this.tweens.add({
@@ -2401,8 +2379,7 @@ export default class BattleScene extends Phaser.Scene {
           slash.lineBetween(target.x - 100, target.y - 100, target.x + 100, target.y + 100);
           this.tweens.add({ targets: slash, alpha: 0, duration: 300, onComplete: () => slash.destroy() });
 
-          this.createImpactEffect(target.x, target.y, dashColor);
-          this.cameras.main.shake(500, 0.08);
+          this.createImpactEffect(target.x, target.y, dashColor, 'beam');
           this.takeDamage(!isP, dmg);
           
           attacker.setPosition(startX, startY);
@@ -2442,8 +2419,7 @@ export default class BattleScene extends Phaser.Scene {
           duration: 300,
           ease: 'Power2',
           onComplete: () => {
-              this.cameras.main.shake(150, 0.02);
-              this.createImpactEffect(target.x, target.y - 20, 0xff0000);
+              this.createImpactEffect(target.x, target.y - 20, 0xff0000, 'beam');
               if(this.cache.audio.exists('sfx_hit')) this.sound.play('sfx_hit');
               this.takeDamage(!isP, dmg);
               
@@ -2582,8 +2558,7 @@ export default class BattleScene extends Phaser.Scene {
                               swirlTween.stop();
                               
                               // Impact
-                              this.createImpactEffect(target.x, target.y, color);
-                              this.cameras.main.shake(300, 0.05);
+                              this.createImpactEffect(target.x, target.y, color, 'beam');
                               if(this.cache.audio.exists('sfx_hit')) this.sound.play('sfx_hit');
                               this.takeDamage(!isP, dmg);
                               
@@ -2685,9 +2660,7 @@ export default class BattleScene extends Phaser.Scene {
                           alpha: 0,
                           duration: 300,
                           onComplete: () => {
-                              this.createImpactEffect(target.x, target.y, color);
-                              this.cameras.main.shake(600, 0.06);
-                              this.cameras.main.flash(200, 255, 255, 255);
+                              this.createImpactEffect(target.x, target.y, color, 'beam');
                               this.takeDamage(!isP, dmg);
                               shuriken.destroy();
                               this.onSpecialComplete(isP);
@@ -2742,7 +2715,6 @@ export default class BattleScene extends Phaser.Scene {
                       
                       if (i === 2) {
                           this.takeDamage(!isP, dmg);
-                          this.cameras.main.shake(150, 0.02);
                           this.onSpecialComplete(isP);
                       }
                   }
@@ -2789,9 +2761,7 @@ export default class BattleScene extends Phaser.Scene {
                   if(!this.scene.isActive()) return;
                   
                   // Final explosive strike
-                  this.createImpactEffect(target.x, target.y, 0xf1c40f);
-                  this.cameras.main.flash(300, 255, 255, 255);
-                  this.cameras.main.shake(400, 0.05);
+                  this.createImpactEffect(target.x, target.y, 0xf1c40f, 'beam');
                   this.takeDamage(!isP, dmg);
                   
                   // Fade out darkness and return
@@ -2968,9 +2938,7 @@ export default class BattleScene extends Phaser.Scene {
                   if(!this.scene.isActive()) return;
                   
                   // Final massive slash
-                  this.createImpactEffect(target.x, target.y, 0xff0000);
-                  this.cameras.main.flash(500, 255, 0, 0);
-                  this.cameras.main.shake(500, 0.08);
+                  this.createImpactEffect(target.x, target.y, 0xff0000, 'beam');
                   this.takeDamage(!isP, dmg);
                   
                   // Fade out domain
@@ -3028,8 +2996,7 @@ export default class BattleScene extends Phaser.Scene {
                   onComplete: () => {
                       blue.destroy();
                       red.destroy();
-                      this.createImpactEffect(target.x, target.y, 0x8a2be2);
-                      this.cameras.main.shake(200, 0.02);
+                      this.createImpactEffect(target.x, target.y, 0x8a2be2, 'beam');
                       this.takeDamage(!isP, dmg);
                       this.onSpecialComplete(isP);
                   }
@@ -3091,8 +3058,7 @@ export default class BattleScene extends Phaser.Scene {
                           purple.destroy();
                           purpleAura.destroy();
                           
-                          this.cameras.main.flash(500, 255, 255, 255);
-                          this.cameras.main.shake(500, 0.08);
+                          this.createImpactEffect(target.x, target.y, 0x8a2be2, 'beam');
                           this.takeDamage(!isP, dmg);
                           
                           this.tweens.add({
@@ -3111,34 +3077,38 @@ export default class BattleScene extends Phaser.Scene {
       });
   }
 
-  createImpactEffect(x: number, y: number, color: number) {
+  createImpactEffect(x: number, y: number, color: number, type: 'melee' | 'beam' | 'block' = 'melee') {
+      const isBeam = type === 'beam';
+      const isBlock = type === 'block';
+
       // Main Flash - Make it bigger and punchier
-      const boom = this.add.circle(x, y, 20, color).setDepth(20);
+      const boom = this.add.circle(x, y, isBeam ? 40 : (isBlock ? 15 : 20), color).setDepth(20);
       this.tweens.add({ 
           targets: boom, 
-          scale: 6, 
+          scale: isBeam ? 8 : (isBlock ? 3 : 6), 
           alpha: 0, 
-          duration: 250, 
+          duration: isBeam ? 350 : 250, 
           ease: 'Cubic.easeOut',
           onComplete: () => boom.destroy() 
       });
       
       // Add an inner white core for more impact
-      const core = this.add.circle(x, y, 10, 0xffffff).setDepth(21);
+      const core = this.add.circle(x, y, isBeam ? 20 : 10, 0xffffff).setDepth(21);
       this.tweens.add({ 
           targets: core, 
-          scale: 4, 
+          scale: isBeam ? 6 : 4, 
           alpha: 0, 
-          duration: 150, 
+          duration: isBeam ? 200 : 150, 
           ease: 'Cubic.easeOut',
           onComplete: () => core.destroy() 
       });
       
       // Debris / Sparks - Faster and more dynamic
-      for(let i=0; i<16; i++) { 
-          const p = this.add.rectangle(x, y, 6, 6, color).setDepth(20);
+      const particleCount = isBeam ? 24 : (isBlock ? 8 : 16);
+      for(let i=0; i<particleCount; i++) { 
+          const p = this.add.rectangle(x, y, isBeam ? 8 : 6, isBeam ? 8 : 6, isBlock ? 0x3498db : color).setDepth(20);
           const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-          const dist = Phaser.Math.Between(60, 150);
+          const dist = isBeam ? Phaser.Math.Between(100, 250) : Phaser.Math.Between(60, 150);
           
           this.tweens.add({
               targets: p,
@@ -3152,6 +3122,29 @@ export default class BattleScene extends Phaser.Scene {
               onComplete: () => p.destroy()
           });
       }
+
+      // Extra ring for beams
+      if (isBeam) {
+          const ring = this.add.circle(x, y, 30).setStrokeStyle(4, color).setDepth(19);
+          this.tweens.add({
+              targets: ring,
+              scale: 5,
+              alpha: 0,
+              duration: 400,
+              ease: 'Cubic.easeOut',
+              onComplete: () => ring.destroy()
+          });
+          
+          // Beam specific screen flash and shake
+          this.cameras.main.flash(150, 255, 255, 255, true);
+          this.cameras.main.shake(300, 0.05);
+      } else if (isBlock) {
+          // Block specific shake
+          this.cameras.main.shake(100, 0.01);
+      } else {
+          // Melee specific shake
+          this.cameras.main.shake(150, 0.02);
+      }
   }
 
   takeDamage(isP: boolean, dmg: number) {
@@ -3163,28 +3156,23 @@ export default class BattleScene extends Phaser.Scene {
       if(def) {
           dmg = Math.floor(dmg * 0.3);
           // Block effect
-          this.createImpactEffect(target.x, target.y, 0x3498db); // Blue shield spark
+          this.createImpactEffect(target.x, target.y, 0x3498db, 'block'); // Blue shield spark
           if(this.cache.audio.exists('sfx_block')) this.sound.play('sfx_block');
-          this.cameras.main.shake(100, 0.01); // Light shake for block
       } else {
           if(this.cache.audio.exists('sfx_hit')) this.sound.play('sfx_hit');
-          
-          // Stronger shake and flash for hit
-          this.cameras.main.shake(200, 0.03); 
-          this.cameras.main.flash(50, 255, 255, 255, true); 
           
           // Hit pause (time freeze) for impact
           this.tweens.timeScale = 0;
           if (this.player.anims && this.player.anims.isPlaying) this.player.anims.pause();
           if (this.enemy.anims && this.enemy.anims.isPlaying) this.enemy.anims.pause();
           
-          setTimeout(() => {
+          this.time.delayedCall(60, () => {
               if (this.scene && this.scene.isActive()) {
                   this.tweens.timeScale = 1;
                   if (this.player.anims && !this.player.anims.isPlaying) this.player.anims.resume();
                   if (this.enemy.anims && !this.enemy.anims.isPlaying) this.enemy.anims.resume();
               }
-          }, 60); // 60ms real-time freeze
+          }); // 60ms freeze
       }
       
       if(isP) this.playerHp = Math.max(0, this.playerHp - dmg);
@@ -3283,7 +3271,7 @@ export default class BattleScene extends Phaser.Scene {
           } else if (this.enemyKi >= 40 && r < 0.7) {
               this.performSpecial(false, false);
           } else if (r < 0.6) {
-              this.performAttack(false);
+              this.performAttack(false, Math.random() > 0.5 ? 'melee' : 'ki');
           } else {
               this.performCharge(false);
           }
@@ -3299,7 +3287,7 @@ export default class BattleScene extends Phaser.Scene {
           } else if (this.enemyKi < 40 && r < 0.8) {
               this.performCharge(false);
           } else {
-              this.performAttack(false);
+              this.performAttack(false, Math.random() > 0.5 ? 'melee' : 'ki');
           }
           return;
       }
@@ -3321,7 +3309,7 @@ export default class BattleScene extends Phaser.Scene {
               this.performSpecial(false, false);
               return;
           } else if (r < 0.8) {
-              this.performAttack(false);
+              this.performAttack(false, Math.random() > 0.5 ? 'melee' : 'ki');
               return;
           } else {
               this.performCharge(false);
@@ -3334,16 +3322,16 @@ export default class BattleScene extends Phaser.Scene {
           // High Ki: Favor Super or Normal Special
           if (r < 0.5) this.performSpecial(false, true);
           else if (r < 0.8) this.performSpecial(false, false);
-          else this.performAttack(false);
+          else this.performAttack(false, Math.random() > 0.5 ? 'melee' : 'ki');
       } else if (this.enemyKi >= 40) {
           // Medium Ki: Mix of Special, Attack, and Charge
           if (r < 0.4) this.performSpecial(false, false);
-          else if (r < 0.7) this.performAttack(false);
+          else if (r < 0.7) this.performAttack(false, Math.random() > 0.5 ? 'melee' : 'ki');
           else this.performCharge(false);
       } else {
           // Low Ki: Favor Charging
           if (r < 0.7) this.performCharge(false);
-          else this.performAttack(false);
+          else this.performAttack(false, Math.random() > 0.5 ? 'melee' : 'ki');
       }
   }
 
