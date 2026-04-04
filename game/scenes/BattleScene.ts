@@ -82,15 +82,6 @@ export default class BattleScene extends Phaser.Scene {
   create(){
     this.gameState = this.registry.get('gameState') as GameState;
     this.isBattleOver = false;
-
-    // Set up camera to center on the 960x540 logical area
-    this.cameras.main.setScroll(- (this.scale.width - 960) / 2, - (this.scale.height - 540) / 2);
-    
-    // Listen for resize events
-    this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
-        this.cameras.main.setScroll(- (gameSize.width - 960) / 2, - (gameSize.height - 540) / 2);
-    });
-
     this.p1ActionActive = false;
     this.p2ActionActive = false;
     this.p1SpecialHoldTime = 0;
@@ -1201,6 +1192,12 @@ export default class BattleScene extends Phaser.Scene {
 
       this.setActionState(isPlayer, true);
       this.modifyKi(isPlayer, -cost);
+      
+      if (isPlayer) {
+          this.p1ComboCount = 0;
+      } else {
+          this.p2ComboCount = 0;
+      }
 
       if (data.key === 'minipekka') {
           if (isSuper) this.specialMegaPancake(isPlayer);
@@ -1322,15 +1319,15 @@ export default class BattleScene extends Phaser.Scene {
       const endX = target.x;
       const distance = Math.abs(endX - hand.x);
 
+      this.log("KAMEHAMEHA!");
+      if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam');
+
       // Muzzle Flash (Charge)
       const muzzle = this.add.circle(hand.x, hand.y, 5, 0x00ffff).setDepth(7).setAlpha(0.8);
       // Flash Tween
       this.tweens.add({ targets: muzzle, scale: 6, alpha: 0.2, duration: 150, yoyo: true, repeat: 1 });
       // Shake during charge
       this.cameras.main.shake(100, 0.01);
-
-      this.log("KAMEHAMEHA!");
-      if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam');
 
       // The Beam Structure
       const originX = 0; 
@@ -1427,15 +1424,15 @@ export default class BattleScene extends Phaser.Scene {
       const endX = target.x;
       const distance = Math.abs(endX - hand.x);
 
+      this.log(isS ? "SUPER ATTACK!" : type.toUpperCase() + "!");
+      if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam');
+
       // Muzzle Flash (Charge)
       const muzzle = this.add.circle(hand.x, hand.y, 5, col).setDepth(7).setAlpha(0.8);
       // Flash Tween
       this.tweens.add({ targets: muzzle, scale: 6, alpha: 0.2, duration: 150, yoyo: true, repeat: 1 });
       // Shake during charge
       this.cameras.main.shake(100, 0.01);
-
-      this.log(isS ? "SUPER ATTACK!" : type.toUpperCase() + "!");
-      if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam');
 
       // The Beam Structure
       const originX = 0; 
@@ -1825,51 +1822,66 @@ export default class BattleScene extends Phaser.Scene {
       const dmg = Math.floor(baseDmg * this.getDamageMultiplier(transLevel));
 
       this.log("PANCAKES!");
+      if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack');
       
       const animKeyAttack = this.getAnimKey(attackerData.key, transLevel, 'attack');
       const animKeyIdle = this.getAnimKey(attackerData.key, transLevel, 'idle');
       attacker.play(animKeyAttack);
       
-      // Shadow looming over target
-      const shadow = this.add.ellipse(target.x, target.y + 30, 10, 5, 0x000000, 0.5);
-      this.tweens.add({ targets: shadow, scaleX: 10, scaleY: 5, duration: 400 });
-
+      // Charge squash
       this.tweens.add({
           targets: attacker,
-          y: startY - 400, // Higher jump
-          x: target.x,
-          duration: 400,
-          ease: 'Cubic.easeOut',
+          scaleX: 3.5,
+          scaleY: 2.5,
+          duration: 200,
+          ease: 'Quad.easeOut',
           onComplete: () => {
               if (!this.scene.isActive()) return;
+              
+              // Shadow looming over target
+              const shadow = this.add.ellipse(target.x, target.y + 30, 10, 5, 0x000000, 0.5);
+              this.tweens.add({ targets: shadow, scaleX: 10, scaleY: 5, duration: 400 });
+
               this.tweens.add({
                   targets: attacker,
-                  y: startY,
-                  duration: 150, // Faster drop
-                  ease: 'Bounce.easeOut', 
+                  y: startY - 400, // Higher jump
+                  x: target.x,
+                  scaleX: 3,
+                  scaleY: 3,
+                  duration: 400,
+                  ease: 'Cubic.easeOut',
                   onComplete: () => {
                       if (!this.scene.isActive()) return;
-                      this.cameras.main.shake(300, 0.08); // Big shake
-                      
-                      // Shockwave Ring
-                      const ring = this.add.circle(target.x, startY, 10, 0x00aaff).setStrokeStyle(3, 0xffffff).setDepth(20);
-                      this.tweens.add({ targets: ring, scale: 10, alpha: 0, duration: 300 });
+                      this.tweens.add({
+                          targets: attacker,
+                          y: startY,
+                          duration: 150, // Faster drop
+                          ease: 'Bounce.easeOut', 
+                          onComplete: () => {
+                              if (!this.scene.isActive()) return;
+                              this.cameras.main.shake(300, 0.08); // Big shake
+                              
+                              // Shockwave Ring
+                              const ring = this.add.circle(target.x, startY, 10, 0x00aaff).setStrokeStyle(3, 0xffffff).setDepth(20);
+                              this.tweens.add({ targets: ring, scale: 10, alpha: 0, duration: 300 });
 
-                      this.createImpactEffect(target.x, startY, 0x00aaff);
-                      this.takeDamage(!isP, dmg);
-                      shadow.destroy();
-                      
-                      this.time.delayedCall(400, () => {
-                          if(this.scene.isActive()) {
-                            this.tweens.add({
-                                targets: attacker,
-                                x: startX,
-                                y: startY,
-                                duration: 300,
-                                onComplete: () => {
-                                    this.onSpecialComplete(isP);
-                                }
-                            });
+                              this.createImpactEffect(target.x, startY, 0x00aaff);
+                              this.takeDamage(!isP, dmg);
+                              shadow.destroy();
+                              
+                              this.time.delayedCall(400, () => {
+                                  if(this.scene.isActive()) {
+                                    this.tweens.add({
+                                        targets: attacker,
+                                        x: startX,
+                                        y: startY,
+                                        duration: 300,
+                                        onComplete: () => {
+                                            this.onSpecialComplete(isP);
+                                        }
+                                    });
+                                  }
+                              });
                           }
                       });
                   }
@@ -2045,16 +2057,16 @@ export default class BattleScene extends Phaser.Scene {
       this.createAnimsFor('goku');
 
       // Ghost Goku (Visual representation)
-      const ghost = this.add.sprite(attacker.x + (isP ? -30 : 30), attacker.y - 40, 'goku_ssj')
+      const ghost = this.add.sprite(attacker.x + (isP ? -40 : 40), attacker.y - 60, 'goku_ssj')
           .setOrigin(0.5, 0.5)
           .setAlpha(0)
-          .setScale(3)
-          .setDepth(0);
+          .setScale(3.5)
+          .setDepth(2); // In front of Gohan to be clearly visible
       ghost.setFlipX(!isP);
       if (this.anims.exists('goku_ssj_attack')) {
           ghost.play('goku_ssj_attack');
       }
-      this.tweens.add({ targets: ghost, alpha: 0.6, duration: 500 });
+      this.tweens.add({ targets: ghost, alpha: 0.85, duration: 500 });
 
       // Massive Beam using the new texture
       const beam = this.add.sprite(hand.x, hand.y, 'massive_beam')
@@ -2369,39 +2381,60 @@ export default class BattleScene extends Phaser.Scene {
       const startY = attacker.y;
 
       this.log("MEGA PANCAKE!");
+      if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack');
       
       const animKeyAttack = this.getAnimKey(attackerData.key, transLevel, 'attack');
       const animKeyIdle = this.getAnimKey(attackerData.key, transLevel, 'idle');
       attacker.play(animKeyAttack);
       
-      // Shadow looming over target
-      const shadow = this.add.ellipse(target.x, target.y + 30, 10, 5, 0x000000, 0.5);
-      this.tweens.add({ targets: shadow, scaleX: 20, scaleY: 10, duration: 600 });
-
-      // Giant Pancake visual
-      const pancake = this.add.ellipse(target.x, target.y - 600, 150, 40, 0xd35400).setDepth(16);
-      const butter = this.add.rectangle(target.x, target.y - 610, 30, 20, 0xf1c40f).setDepth(17);
-
+      // Charge squash
       this.tweens.add({
-          targets: [pancake, butter],
-          y: '+=600',
-          duration: 600,
-          ease: 'Cubic.easeIn',
+          targets: attacker,
+          scaleX: 4,
+          scaleY: 2,
+          duration: 300,
+          ease: 'Quad.easeOut',
           onComplete: () => {
               if (!this.scene.isActive()) return;
-              this.createImpactEffect(target.x, target.y, 0xd35400, 'beam');
-              this.takeDamage(!isP, dmg);
               
+              // Shadow looming over target
+              const shadow = this.add.ellipse(target.x, target.y + 30, 10, 5, 0x000000, 0.5);
+              this.tweens.add({ targets: shadow, scaleX: 20, scaleY: 10, duration: 600 });
+
+              // Giant Pancake visual
+              const pancake = this.add.ellipse(target.x, target.y - 600, 150, 40, 0xd35400).setDepth(16);
+              const butter = this.add.rectangle(target.x, target.y - 610, 30, 20, 0xf1c40f).setDepth(17);
+
               this.tweens.add({
-                  targets: [pancake, butter, shadow],
-                  alpha: 0,
-                  duration: 500,
+                  targets: [pancake, butter],
+                  y: '+=600',
+                  duration: 600,
+                  ease: 'Cubic.easeIn',
                   onComplete: () => {
-                      pancake.destroy();
-                      butter.destroy();
-                      shadow.destroy();
-                      attacker.play(animKeyIdle);
-                      this.onSpecialComplete(isP);
+                      if (!this.scene.isActive()) return;
+                      this.createImpactEffect(target.x, target.y, 0xd35400, 'beam');
+                      this.takeDamage(!isP, dmg);
+                      
+                      this.tweens.add({
+                          targets: attacker,
+                          scaleX: 3,
+                          scaleY: 3,
+                          duration: 200,
+                          ease: 'Quad.easeIn'
+                      });
+                      
+                      this.tweens.add({
+                          targets: [pancake, butter, shadow],
+                          alpha: 0,
+                          duration: 500,
+                          onComplete: () => {
+                              pancake.destroy();
+                              butter.destroy();
+                              shadow.destroy();
+                              attacker.play(animKeyIdle);
+                              this.onSpecialComplete(isP);
+                          }
+                      });
                   }
               });
           }
@@ -2899,6 +2932,7 @@ export default class BattleScene extends Phaser.Scene {
       const dmg = Math.floor(140 * this.getDamageMultiplier(transLevel));
 
       this.log("CASTELO MANIVOLENTE!");
+      if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack', { rate: 0.5 });
       
       // Screen goes dark red
       const darkOverlay = this.add.rectangle(this.cameras.main.width/2, this.cameras.main.height/2, this.cameras.main.width, this.cameras.main.height, 0x5a0000, 0).setDepth(8);
@@ -3036,6 +3070,7 @@ export default class BattleScene extends Phaser.Scene {
       const dmg = Math.floor(45 * this.getDamageMultiplier(transLevel));
 
       this.log("CURSED TECHNIQUE: RED & BLUE!");
+      if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam');
       
       const hand = this.getHandPosition(isP);
       
@@ -3084,6 +3119,7 @@ export default class BattleScene extends Phaser.Scene {
       const dmg = Math.floor(150 * this.getDamageMultiplier(transLevel));
 
       this.log("HOLLOW PURPLE!");
+      if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam', { rate: 0.8 });
       
       const hand = this.getHandPosition(isP);
       
@@ -3224,6 +3260,13 @@ export default class BattleScene extends Phaser.Scene {
       
       const def = isP ? this.playerDefending : this.enemyDefending;
       const target = isP ? this.player : this.enemy;
+      
+      // Reset combo count when hit
+      if (isP) {
+          this.p1ComboCount = 0;
+      } else {
+          this.p2ComboCount = 0;
+      }
       
       if(def) {
           dmg = Math.floor(dmg * 0.3);

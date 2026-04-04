@@ -10,8 +10,8 @@ import PauseScene from './scenes/PauseScene';
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: '100%',
-  height: '100%',
+  width: 960,
+  height: 540,
   parent: 'game-container',
   backgroundColor: '#071026',
   pixelArt: true,
@@ -34,7 +34,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     }
   },
   scale: {
-    mode: Phaser.Scale.RESIZE,
+    mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     orientation: Phaser.Scale.Orientation.LANDSCAPE
   }
