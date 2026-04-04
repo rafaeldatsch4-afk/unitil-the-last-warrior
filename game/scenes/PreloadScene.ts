@@ -61,7 +61,17 @@ export default class PreloadScene extends Phaser.Scene {
     const currentState = window.UTLW?.state;
     const chars = currentState && currentState.characters ? currentState.characters : INITIAL_CHARACTERS;
 
-    chars.forEach(c => {
+    // Ensure Goku is generated if Gohan is present (for Father-Son Kamehameha)
+    const hasGohan = chars.some(c => c.key === 'gohan');
+    const hasGoku = chars.some(c => c.key === 'goku');
+    
+    const charsToGenerate = [...chars];
+    if (hasGohan && !hasGoku) {
+        const gokuData = INITIAL_CHARACTERS.find(c => c.key === 'goku');
+        if (gokuData) charsToGenerate.push(gokuData);
+    }
+
+    charsToGenerate.forEach(c => {
       // Base Form
       if (this.textures.exists(c.key)) {
           this.textures.remove(c.key);
@@ -913,8 +923,8 @@ export default class PreloadScene extends Phaser.Scene {
                 headBox(13, 12, 6, 1, 0xe0ac7d); // Jaw shadow
                 
                 // Face
-                headDot(13, 9, WHITE); headDot(18, 9, WHITE); 
-                headDot(14, 9, eyeColor); headDot(17, 9, eyeColor);
+                headDot(13, 9, WHITE); headDot(17, 9, WHITE); // Sclera
+                headDot(14, 9, eyeColor); headDot(18, 9, eyeColor); // Pupils
                 headDot(13, 8, hairColor); headDot(14, 8, hairColor);
                 headDot(17, 8, hairColor); headDot(18, 8, hairColor);
                 // Angry brow furrow
@@ -935,14 +945,14 @@ export default class PreloadScene extends Phaser.Scene {
                     headBox(22, 2, 2, 4, hairColor); // Far right spike
                     
                     // The iconic Beast bang
-                    headBox(14, 6, 2, 4, hairColor);
-                    headBox(15, 10, 1, 3, hairColor);
+                    headBox(14, 6, 2, 3, hairColor);
+                    headBox(15, 9, 1, 2, hairColor);
                     
                     // Hair shading
                     headBox(11, -2, 1, 6, HAIR_SHADOW); headBox(20, -2, 1, 6, HAIR_SHADOW);
                     headBox(12, -4, 1, 6, HAIR_SHADOW); headBox(18, -3, 1, 5, HAIR_SHADOW);
                     headBox(15, -6, 1, 8, HAIR_SHADOW); // Middle spike shadow
-                    headBox(14, 6, 1, 4, HAIR_SHADOW); // Bang shadow
+                    headBox(14, 6, 1, 3, HAIR_SHADOW); // Bang shadow
                 } else { 
                     // Ultimate Gohan hair (spiky but normal length, one bang)
                     headBox(11, 1, 10, 5, hairColor); 

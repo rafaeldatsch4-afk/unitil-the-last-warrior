@@ -61,6 +61,11 @@ export default class BattleScene extends Phaser.Scene {
   private p2KiBar!: Phaser.GameObjects.Rectangle;
   private logText!: Phaser.GameObjects.Text;
 
+  private p1ComboCount: number = 0;
+  private p1LastAttackTime: number = 0;
+  private p2ComboCount: number = 0;
+  private p2LastAttackTime: number = 0;
+
   private isBattleOver: boolean = false;
   private turnTimer?: Phaser.Time.TimerEvent;
   private regenTimer?: Phaser.Time.TimerEvent;
@@ -77,6 +82,15 @@ export default class BattleScene extends Phaser.Scene {
   create(){
     this.gameState = this.registry.get('gameState') as GameState;
     this.isBattleOver = false;
+
+    // Set up camera to center on the 960x540 logical area
+    this.cameras.main.setScroll(- (this.scale.width - 960) / 2, - (this.scale.height - 540) / 2);
+    
+    // Listen for resize events
+    this.scale.on('resize', (gameSize: Phaser.Structs.Size) => {
+        this.cameras.main.setScroll(- (gameSize.width - 960) / 2, - (gameSize.height - 540) / 2);
+    });
+
     this.p1ActionActive = false;
     this.p2ActionActive = false;
     this.p1SpecialHoldTime = 0;
@@ -441,6 +455,30 @@ export default class BattleScene extends Phaser.Scene {
 
       this.setActionState(isPlayer, true);
 
+      // Combo Logic
+      const currentTime = this.time.now;
+      let comboCount = 0;
+      
+      if (isPlayer) {
+          if (currentTime - this.p1LastAttackTime < 1000) {
+              this.p1ComboCount++;
+          } else {
+              this.p1ComboCount = 1;
+          }
+          this.p1LastAttackTime = currentTime;
+          comboCount = this.p1ComboCount;
+      } else {
+          if (currentTime - this.p2LastAttackTime < 1000) {
+              this.p2ComboCount++;
+          } else {
+              this.p2ComboCount = 1;
+          }
+          this.p2LastAttackTime = currentTime;
+          comboCount = this.p2ComboCount;
+      }
+
+      const isComboFinisher = comboCount % 3 === 0;
+
       // 1. Windup (Hop Back & Rotate)
       const windupDist = isPlayer ? -60 : 60;
       const rotDir = isPlayer ? -0.3 : 0.3;
@@ -485,14 +523,17 @@ export default class BattleScene extends Phaser.Scene {
 
                   // Lunge Forward
                   attacker.play(this.getAnimKey(attackerData.key, transLevel, 'attack'));
+                  
+                  const lungeDist = isComboFinisher ? (isPlayer ? -50 : 50) : (isPlayer ? -30 : 30);
+                  
                   this.tweens.add({
                       targets: attacker,
-                      x: target.x + (isPlayer ? -30 : 30), // Deeper lunge
+                      x: target.x + lungeDist, // Deeper lunge
                       y: startY,
                       rotation: -rotDir * 2.5, // More rotation for follow-through
                       scaleX: 3.4,
                       scaleY: 2.6,
-                      duration: 100, // Faster lunge
+                      duration: isComboFinisher ? 80 : 100, // Faster lunge
                       ease: 'Expo.easeIn',
                       onComplete: () => {
                          trailTimer.remove();
@@ -501,13 +542,26 @@ export default class BattleScene extends Phaser.Scene {
                          // Impact
                          if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack', { volume: 1.2 });
                          
-                         const baseDamage = 10;
+                         const baseDamage = isComboFinisher ? 20 : 10;
                          const damage = Math.floor(baseDamage * this.getDamageMultiplier(transLevel));
                          
                          this.takeDamage(!isPlayer, damage); 
                          this.modifyKi(isPlayer, 5);
                          
                          // Visual Impact
+                         this.cameras.main.shake(isComboFinisher ? 200 : 100, isComboFinisher ? 0.02 : 0.01);
+                         
+                         if (isComboFinisher) {
+                             const comboText = this.add.text(target.x, target.y - 100, 'COMBO FINISH!', { fontSize: '24px', color: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5).setDepth(20);
+                             this.tweens.add({
+                                 targets: comboText,
+                                 y: target.y - 150,
+                                 alpha: 0,
+                                 duration: 1000,
+                                 onComplete: () => comboText.destroy()
+                             });
+                         }
+
                          this.createImpactEffect(target.x, target.y - 20, 0xffffff);
                          
                          // Target hit flash
@@ -519,10 +573,20 @@ export default class BattleScene extends Phaser.Scene {
                              repeat: 1
                          });
 
-                         // Follow-through pause and return
-                         this.time.delayedCall(100, () => {
-                             if (!this.scene.isActive()) return;
-                             // Return
+                         // Knockback Target
+                         const knockbackDist = isComboFinisher ? (isPlayer ? 80 : -80) : (isPlayer ? 30 : -30);
+                         this.tweens.add({
+                             targets: target,
+                             x: target.x + knockbackDist,
+                             duration: 100,
+                             yoyo: true,
+                             ease: 'Sine.easeOut'
+                         });
+
+                         // 3. Recover (Return to start)
+                         this.time.delayedCall(150, () => {
+                             if(!this.scene.isActive()) return;
+                             attacker.play(this.getAnimKey(attackerData.key, transLevel, 'idle'));
                              this.tweens.add({
                                  targets: attacker,
                                  x: startX,
@@ -530,13 +594,10 @@ export default class BattleScene extends Phaser.Scene {
                                  rotation: 0,
                                  scaleX: 3,
                                  scaleY: 3,
-                                 duration: 300,
-                                 ease: 'Back.easeOut',
+                                 duration: 200,
+                                 ease: 'Sine.easeInOut',
                                  onComplete: () => {
-                                     if(this.scene.isActive()) {
-                                         attacker.play(this.getAnimKey(attackerData.key, transLevel, 'idle'));
-                                         this.setActionState(isPlayer, false);
-                                     }
+                                     this.setActionState(isPlayer, false);
                                  }
                              });
                          });
@@ -589,67 +650,75 @@ export default class BattleScene extends Phaser.Scene {
                          muzzle.setBlendMode(Phaser.BlendModes.ADD);
                          this.tweens.add({ targets: muzzle, scale: 0, alpha: 0, duration: 200, onComplete: () => muzzle.destroy() });
 
-                         const blast = this.add.circle(originX, originY, 18, blastColor).setDepth(5);
-                         const core = this.add.circle(blast.x, blast.y, 10, 0xffffff).setDepth(6);
-                         blast.setBlendMode(Phaser.BlendModes.ADD);
+                         const blastCount = isComboFinisher ? 3 : 1;
                          
-                         // Continuous Beam trail
-                         const trailLine = this.add.graphics().setDepth(3);
-                         trailLine.setBlendMode(Phaser.BlendModes.ADD);
-                         
-                         const trailUpdateEvent = this.time.addEvent({
-                             delay: 10,
-                             callback: () => {
-                                 if (!this.scene.isActive() || !blast.active) return;
-                                 trailLine.clear();
-                                 trailLine.lineStyle(20, blastColor, 0.6);
-                                 trailLine.lineBetween(originX, originY, blast.x, blast.y);
-                                 trailLine.lineStyle(10, 0xffffff, 0.8);
-                                 trailLine.lineBetween(originX, originY, blast.x, blast.y);
-                             },
-                             loop: true
-                         });
-                         
-                         this.tweens.add({
-                             targets: [blast, core],
-                             x: target.x,
-                             duration: 120, // Faster beam
-                             ease: 'Linear',
-                             onComplete: () => {
-                                 trailUpdateEvent.remove();
-                                 this.tweens.add({
-                                     targets: trailLine,
-                                     alpha: 0,
-                                     duration: 150,
-                                     onComplete: () => trailLine.destroy()
-                                 });
-                                 blast.destroy();
-                                 core.destroy();
-                                 
+                         for (let i = 0; i < blastCount; i++) {
+                             this.time.delayedCall(i * 100, () => {
                                  if (!this.scene.isActive()) return;
                                  
-                                 // Impact
-                                 if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack', { volume: 1.5 });
+                                 const blast = this.add.circle(originX, originY, 18, blastColor).setDepth(5);
+                                 const core = this.add.circle(blast.x, blast.y, 10, 0xffffff).setDepth(6);
+                                 blast.setBlendMode(Phaser.BlendModes.ADD);
                                  
-                                 const baseDamage = 10;
-                                 const damage = Math.floor(baseDamage * this.getDamageMultiplier(transLevel));
+                                 // Continuous Beam trail
+                                 const trailLine = this.add.graphics().setDepth(3);
+                                 trailLine.setBlendMode(Phaser.BlendModes.ADD);
                                  
-                                 this.takeDamage(!isPlayer, damage); 
-                                 this.modifyKi(isPlayer, 5);
-                                 
-                                 // Visual Impact
-                                 this.createImpactEffect(target.x, target.y - 20, blastColor, 'beam');
-                                 
-                                 // Target hit flash
-                                 this.tweens.add({
-                                     targets: target,
-                                     alpha: 0.5,
-                                     yoyo: true,
-                                     duration: 50,
-                                     repeat: 2
+                                 const trailUpdateEvent = this.time.addEvent({
+                                     delay: 10,
+                                     callback: () => {
+                                         if (!this.scene.isActive() || !blast.active) return;
+                                         trailLine.clear();
+                                         trailLine.lineStyle(20, blastColor, 0.6);
+                                         trailLine.lineBetween(originX, originY, blast.x, blast.y);
+                                         trailLine.lineStyle(10, 0xffffff, 0.8);
+                                         trailLine.lineBetween(originX, originY, blast.x, blast.y);
+                                     },
+                                     loop: true
                                  });
-                             }
-                         });
+                                 
+                                 this.tweens.add({
+                                     targets: [blast, core],
+                                     x: target.x,
+                                     duration: 120, // Faster beam
+                                     ease: 'Linear',
+                                     onComplete: () => {
+                                         trailUpdateEvent.remove();
+                                         this.tweens.add({
+                                             targets: trailLine,
+                                             alpha: 0,
+                                             duration: 150,
+                                             onComplete: () => trailLine.destroy()
+                                         });
+                                         blast.destroy();
+                                         core.destroy();
+                                         
+                                         if (!this.scene.isActive()) return;
+                                         
+                                         // Impact
+                                         if(this.cache.audio.exists('sfx_attack')) this.sound.play('sfx_attack', { volume: 1.5 });
+                                         
+                                         const baseDamage = isComboFinisher ? 15 : 10;
+                                         const damage = Math.floor(baseDamage * this.getDamageMultiplier(transLevel));
+                                         
+                                         this.takeDamage(!isPlayer, damage); 
+                                         this.modifyKi(isPlayer, 5);
+                                         
+                                         // Visual Impact
+                                         this.createImpactEffect(target.x, target.y - 20, blastColor, 'beam');
+                                         
+                                         // Target hit flash
+                                         this.tweens.add({
+                                             targets: target,
+                                             alpha: 0.5,
+                                             yoyo: true,
+                                             duration: 50,
+                                             repeat: 2
+                                         });
+                                     }
+                                 });
+                             });
+                         }
 
                          // Return
                          this.tweens.add({
@@ -661,7 +730,7 @@ export default class BattleScene extends Phaser.Scene {
                              scaleY: 3,
                              duration: 300,
                              ease: 'Back.easeOut',
-                             delay: 150,
+                             delay: 150 + (blastCount * 100),
                              onComplete: () => {
                                  if(this.scene.isActive()) {
                                      attacker.play(this.getAnimKey(attackerData.key, transLevel, 'idle'));
@@ -1971,6 +2040,9 @@ export default class BattleScene extends Phaser.Scene {
 
       this.log("FATHER-SON KAMEHAMEHA!");
       if(this.cache.audio.exists('sfx_beam')) this.sound.play('sfx_beam');
+
+      // Ensure Goku animations exist
+      this.createAnimsFor('goku');
 
       // Ghost Goku (Visual representation)
       const ghost = this.add.sprite(attacker.x + (isP ? -30 : 30), attacker.y - 40, 'goku_ssj')

@@ -39,7 +39,7 @@ const GameCanvas: React.FC = () => {
     <div 
       ref={containerRef} 
       id="game-container" 
-      className="w-full h-full bg-[#071026]"
+      className="w-full h-full bg-[#071026] [&>canvas]:!w-full [&>canvas]:!h-full [&>canvas]:!object-fill"
     />
   );
 };
